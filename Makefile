@@ -1,11 +1,11 @@
 CC=gcc
-CFLAGS= -std=c99 -O3
+CFLAGS= -std=c99 -O3 -fPIC
 
 SOURCES=two_planet_perturbation.c kepler_solve.c
 OBJECTS=$(SOURCES:.c=.o)
 
 all: $(OBJECTS)
-	$(CC) $(CFLAGS) -shared -o libsemianalyticMEGNO.so $^
+	$(CC) $(CFLAGS) -lm  -shared -o libsemianalyticMEGNO.so $^
 testme: testme.c $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^
 %.o: %.c
