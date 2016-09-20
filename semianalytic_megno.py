@@ -32,7 +32,7 @@ if __name__=="__main__":
 	n1range = np.linspace(1.5*(1-0.007),1.5*(1+0.007),10)
 	n2range = np.linspace(1./1.5/(1+0.007),1./1.5/(1-0.007),10)
 
-	tfin = 2*np.pi*1e-4
+	tfin = 2*np.pi*1e+4
 	dt = 2*np.pi/30.
 	m1=1e-5
 	m2=1e-5
@@ -46,9 +46,9 @@ if __name__=="__main__":
 	from rebound.interruptible_pool import InterruptiblePool
 	pool = InterruptiblePool()
 	parameters = [ (n1,n2) for n1 in n1range for n2 in n2range ]
-        results = pool.map(f , parameters)
+	results = pool.map(f , parameters)
 
 	resultsArr = np.hstack((np.array(parameters),np.array(results).reshape(-1,1) ))
- 	resultsArr.tofile("results.dat")
+	resultsArr.tofile("results.dat")
 
 
