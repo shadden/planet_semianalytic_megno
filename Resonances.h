@@ -1,5 +1,5 @@
 
-#define MAX_ORDER 2
+#define MAX_ORDER 3
 
 typedef struct ResonanceData {
 	int Nres,MaxOrder;

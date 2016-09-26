@@ -3,7 +3,6 @@
 static inline double random_real(){
         return -1+2.*((float)rand())/RAND_MAX;
 }
-
 double MEGNO_Integration(double tfin, double dt, double period, double ecc, double mu1,double mu2, double Omega2){
 
 	int Nstep = (int)(tfin/dt);
@@ -28,7 +27,6 @@ double MEGNO_Integration(double tfin, double dt, double period, double ecc, doub
 	return megno.megno;
 	
 }
-
 void intialize_particle( PhaseState* particle, double period, double  ecc){
 
 	const double a0 = pow(period*period, 1/3. );
@@ -51,18 +49,7 @@ void intialize_particle( PhaseState* particle, double period, double  ecc){
 	(*particle).dvx = 1.e-15*dvec[3]/sqrt(normsq);
 
 }
-
-void intialize_megno_vars( MEGNO_Auxilary_Variables* megno){
-
-	(*megno).Y=0;
-	(*megno).W=0;
-	(*megno).megno=0;
-
-}
-
-
-void two_circular_perturbers_advance(double const mu1, double const mu2, \
-	double const Omega2,  PhaseState* restrict particle , double t, double _dt){
+void two_circular_perturbers_advance(double const mu1, double const mu2, double const Omega2,  PhaseState* restrict particle , double t, double _dt){
 	const PhaseState p1 = *particle;
 	
 	// test-particle planet-1 separation
@@ -119,7 +106,6 @@ void two_circular_perturbers_advance(double const mu1, double const mu2, \
 	
 
 }
-
 void rotaion_advance(  PhaseState* restrict particle , double _dt){
 	const PhaseState p1 = *particle;
 	// eqns
@@ -135,7 +121,6 @@ void rotaion_advance(  PhaseState* restrict particle , double _dt){
 
 
 }
-
 void outer_circular_perturber_advance(double const mu1,  PhaseState* restrict particle ,double _dt){
 	const PhaseState p1 = *particle;
 	
@@ -155,7 +140,6 @@ void outer_circular_perturber_advance(double const mu1,  PhaseState* restrict pa
 	(*particle).vy += _dt * ( mu1 * Fy  );
 
 }
-
 void update_megno_eqations(PhaseState* restrict particle , MEGNO_Auxilary_Variables* megno ,double t,double dt){
 	const PhaseState p1 = *particle;
 	MEGNO_Auxilary_Variables m1 = *megno;
@@ -166,7 +150,6 @@ void update_megno_eqations(PhaseState* restrict particle , MEGNO_Auxilary_Variab
 	(*megno).W = m1.W + dt * 2 * m1.Y / t ;
 	(*megno).megno = m1.W/t;
 }
-
 void compute_variational_accs(PhaseState* restrict particle, double const mu1, double const mu2, double const Omega2, double t){
 	const PhaseState p1 = *particle;
 	// test-particle planet-1 separation

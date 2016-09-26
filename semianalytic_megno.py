@@ -9,6 +9,10 @@ else:
 	SRCDIR = "/projects/p20783/sjh890/02_Chaos_Project/SemiAnalyticCodes/planet_semianalytic_megno"
 who.close()
 
+def get_ctype_ptr(dtype,dim,**kwargs):
+	return np.ctypeslib.ndpointer(dtype=dtype,ndim=dim,flags='CONTIGUOUS',**kwargs)	
+p1d=get_ctype_ptr(np.float,1)
+p1dInt = get_ctype_ptr(c_int,1)
 
 class libwrapper(object):
 
@@ -19,15 +23,49 @@ class libwrapper(object):
 		self._MEGNO_Integration.argtypes = [c_double for i in range(7)]
 		self._MEGNO_Integration.restype = c_double
 		
+		self._CircularFirstOrderResonanceMEGNOIntegration = self.lib.CircularFirstOrderResonanceMEGNOIntegration
+		self._CircularFirstOrderResonanceMEGNOIntegration.argtypes = [c_int,p1dInt,c_int,p1dInt,c_double,c_double,c_double,c_double,c_double]
+		self._CircularFirstOrderResonanceMEGNOIntegration.restype = c_double
+		
+		
+		
 	def MEGNO_Integration(self,tfin,dt,period,ecc,mu1,mu2,Omega2):
 		try:
 			return self._MEGNO_Integration(tfin,dt,period,ecc,mu1,mu2,Omega2)
 		except:
 			print "FAILED ON INPUT: ",tfin,dt,period,ecc,mu1,mu2,Omega2
 			return -1.
-		
+
+	def MEGNO_Integration_Analytic(self,n1,n2,mu1,mu2,resonances1,resonances2,tFin):
+		Nres1 = resonances1.shape[0];
+		Nres2 = resonances2.shape[0];
+# 		for i in range(Nres1):
+# 			resIn[i] = resonances1[i]
+# 		for i in range(Nres2):
+# 			resOut[i] = resonances2[i]
+		try:
+			return self._CircularFirstOrderResonanceMEGNOIntegration(Nres1,resonances1,Nres2,resonances2,mu1,mu2,n1,n2,tFin)
+		except:
+			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
+			return -1.
 		
 if __name__=="__main__":
+	
+	w = libwrapper()
+	
+	def mapfn(pars):
+		n1,n2 = pars
+		return w.MEGNO_Integration_Analytic(n1,n2,1.e-5,1.e-5,np.array([3,4,5],dtype=c_int),np.array([3,4,5],dtype=c_int),np.pi*2*1e4)
+
+	from rebound.interruptible_pool import InterruptiblePool	
+	pool = InterruptiblePool()
+	npts=20
+	pars = [(n1,n2) for n2 in np.linspace(0.75*(1-0.007),0.75*(1+0.007),npts) for n1 in np.linspace(1/0.75*(1-0.007),1/0.75*(1+0.007),npts) ]
+	results=pool.map(mapfn,pars)
+
+	np.savetxt("./megnoresults.txt",np.vstack(( np.array(pars).T , np.array(results) )).T)
+
+if False: #__name__=="__main__":
 
 	parser = ArgumentParser(description='Run a grid of simulations and compute the MEGNO')
 	parser.add_argument('-N','--Ngrid',metavar='N',type=int,default=10,help='Number of grid points in each dimension')
@@ -77,18 +115,16 @@ if __name__=="__main__":
 		omega2 = n2 / n1
 		return w.MEGNO_Integration(simLength, 2*np.pi/30. ,period,0.,planetMass1,planetMass2,omega2)
 
-
 	par_d1 =  np.linspace(n1min,n1max,Ngrid+1)[:-1] 
 	par_d2 =  np.linspace(n2min,n2max,Ngrid+1)[:-1]
 
 	parameters = []
 	for d2 in par_d2:
-	    for d1 in par_d1:
-	        parameters.append((d1,d2))
+		for d1 in par_d1:
+			parameters.append((d1,d2))
 
 	parameters = np.array(parameters)
-	from rebound.interruptible_pool import InterruptiblePool
-	
+	from rebound.interruptible_pool import InterruptiblePool	
 	pool = InterruptiblePool()
 	if restart:
 		import re
