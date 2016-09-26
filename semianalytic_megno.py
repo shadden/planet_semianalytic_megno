@@ -49,7 +49,7 @@ class libwrapper(object):
 			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
 			return -1.
 		
-if __name__=="__main__":
+if False:
 	
 	w = libwrapper()
 	
@@ -65,7 +65,7 @@ if __name__=="__main__":
 
 	np.savetxt("./megnoresults.txt",np.vstack(( np.array(pars).T , np.array(results) )).T)
 
-if False: #__name__=="__main__":
+if __name__=="__main__":
 
 	parser = ArgumentParser(description='Run a grid of simulations and compute the MEGNO')
 	parser.add_argument('-N','--Ngrid',metavar='N',type=int,default=10,help='Number of grid points in each dimension')
@@ -107,13 +107,21 @@ if False: #__name__=="__main__":
 	rHill = ( np.max([ planetMass1,planetMass2 ]) /3.)**(1./3.)
 
 	w = libwrapper()
+
+# 	def f(pars):
+# 		n1,n2 = pars
+# 		n1 = n1 / 2. / np.pi
+# 		n2 = n2 / 2. / np.pi
+# 		period = n1
+# 		omega2 = n2 / n1
+# 		return w.MEGNO_Integration(simLength, 2*np.pi/30. ,period,0.,planetMass1,planetMass2,omega2)
+	
 	def f(pars):
 		n1,n2 = pars
 		n1 = n1 / 2. / np.pi
 		n2 = n2 / 2. / np.pi
-		period = n1
-		omega2 = n2 / n1
-		return w.MEGNO_Integration(simLength, 2*np.pi/30. ,period,0.,planetMass1,planetMass2,omega2)
+		return w.MEGNO_Integration_Analytic(n1,n2,planetMass1,planetMass2,np.array([7,8],dtype=c_int),np.array([8,9],dtype=c_int),simLength)
+
 
 	par_d1 =  np.linspace(n1min,n1max,Ngrid+1)[:-1] 
 	par_d2 =  np.linspace(n2min,n2max,Ngrid+1)[:-1]
