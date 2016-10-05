@@ -1,5 +1,6 @@
 from ctypes import *
 import numpy as np
+import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import os
 who =os.popen("whoami") 
@@ -14,6 +15,63 @@ def get_ctype_ptr(dtype,dim,**kwargs):
 p1d=get_ctype_ptr(np.float,1)
 p1dInt = get_ctype_ptr(c_int,1)
 
+# typedef struct ResonanceData {
+# 	int Nres,MaxOrder;
+# 	int* ResonanceIndices;
+# 	double* ResonanceCoefficients;
+# } ResonanceData;
+
+class ResonanceData(Structure):
+	_fields_ = [("Nres",c_int),
+				("MAxOrder",c_int),
+				("ResonanceIndices",POINTER(c_int)),
+				("ResonanceCoefficients",POINTER(c_double))]
+class PhaseState(Structure):
+	_fields_ = [("x",c_double),
+				("y",c_double),
+				("vx",c_double),
+				("vy",c_double),
+				("dx",c_double),
+				("dy",c_double),
+				("dvx",c_double),
+				("dxy",c_double),
+				("dax",c_double),
+				("day",c_double)]
+class ActionAnglePhaseState(Structure):
+	_fields_ = [("L",c_double),
+				("l",c_double),
+				("Y",c_double),
+				("X",c_double),
+				("dL",c_double),
+				("dl",c_double),
+				("dY",c_double),
+				("dX",c_double),
+				("dLdot",c_double),
+				("dldot",c_double),
+				("dYdot",c_double),
+				("dXdot",c_double)]
+class SimulationParameters(Structure):
+	_fields_ = [("mu1",c_double),
+				("mu2",c_double),
+				("n1",c_double),
+				("n2",c_double),
+				("e1",c_double),
+				("e2",c_double),
+				("varpi2",c_double)]
+class MEGNO_Auxilary_Variables(Structure):
+	_fields_ = [("W",c_double),
+				("Y",c_double),
+				("megno",c_double)]
+class ActionAngleSimulation(Structure):
+	_fields_ = [("state", ActionAnglePhaseState),
+				("parameters",SimulationParameters),
+				("megno",MEGNO_Auxilary_Variables),
+				("rIn",ResonanceData),
+				("rOut",ResonanceData),
+				("dt",c_double),
+				("t",c_double)]
+
+
 class libwrapper(object):
 
 	def __init__(self):
@@ -27,7 +85,22 @@ class libwrapper(object):
 		self._CircularFirstOrderResonanceMEGNOIntegration.argtypes = [c_int,p1dInt,c_int,p1dInt,c_double,c_double,c_double,c_double,c_double]
 		self._CircularFirstOrderResonanceMEGNOIntegration.restype = c_double
 		
-		
+		self._ActionAnglePhaseStateInitialize = self.lib.ActionAnglePhaseStateInitialize
+		self._ActionAnglePhaseStateInitialize.argtypes = [POINTER(ActionAnglePhaseState),c_double,c_double,c_double,c_double]
+		self._ActionAnglePhaseStateInitialize.restype = None
+
+		self._InitializeActionAngleSimulation = self.lib.InitializeActionAngleSimulation
+		self._InitializeActionAngleSimulation.argtypes = [POINTER(ActionAngleSimulation),c_int,p1dInt,c_int,p1dInt] + [c_double for i in range(12)]
+		self._InitializeActionAngleSimulation.restype = None
+
+		self._SimulationStep = self.lib.SimulationStep
+		self._SimulationStep.argtypes = [POINTER(ActionAngleSimulation)]
+		self._SimulationStep.restype = None
+
+
+		self._IntegrateSimulation = self.lib.IntegrateSimulation
+		self._IntegrateSimulation.argtypes = [POINTER(ActionAngleSimulation),c_double] 
+		self._IntegrateSimulation.restype = c_int
 		
 	def MEGNO_Integration(self,tfin,dt,period,ecc,mu1,mu2,Omega2):
 		try:
@@ -36,36 +109,56 @@ class libwrapper(object):
 			print "FAILED ON INPUT: ",tfin,dt,period,ecc,mu1,mu2,Omega2
 			return -1.
 
-	def MEGNO_Integration_Analytic(self,n1,n2,mu1,mu2,resonances1,resonances2,tFin):
+	def MEGNO_Integration_Analytic(self,n1,n2,m1,m2,resonances1,resonances2,dt,tFin):
 		Nres1 = resonances1.shape[0];
 		Nres2 = resonances2.shape[0];
-# 		for i in range(Nres1):
-# 			resIn[i] = resonances1[i]
-# 		for i in range(Nres2):
-# 			resOut[i] = resonances2[i]
+
+		arrIn=resonances1.astype(c_int).reshape(-1)
+		arrOut=resonances2.astype(c_int).reshape(-1)
+		
+		sim = ActionAngleSimulation()
+		
+		L0,l0,X0,Y0 = 2.0,0.,0.0,0.0
+		e1=0
+		e2=0
+		varpi2=0
+		
+		self._InitializeActionAngleSimulation(pointer(sim),Nres1,arrIn,Nres2,arrOut,m1,m2,n1,n2,e1,e2,varpi2,L0,l0,X0,Y0,dt)
 		try:
-			return self._CircularFirstOrderResonanceMEGNOIntegration(Nres1,resonances1,Nres2,resonances2,mu1,mu2,n1,n2,tFin)
+			self._IntegrateSimulation(pointer(sim),tFin)
+			return sim.megno.megno
 		except:
 			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
 			return -1.
 		
-if False:
+if __name__=="__main__":
 	
 	w = libwrapper()
+	sim=ActionAngleSimulation()
+	res1=np.vstack((np.arange(4,7),np.ones(3),np.zeros(3))).T
+	res2=np.vstack((np.arange(4,7),np.ones(3),np.ones(3))).T
+	m1=1e-5
+	m2=3.e-5
+	e1=e2=0
+	varpi2=0
+	L0=2
+	X0=Y0=l0=0
+	n1=5./4.*(1+0.005)
+	n2=4./5.*(1+0.009)
+	dt=2.*np.pi / 10.
 	
-	def mapfn(pars):
-		n1,n2 = pars
-		return w.MEGNO_Integration_Analytic(n1,n2,1.e-5,1.e-5,np.array([3,4,5],dtype=c_int),np.array([3,4,5],dtype=c_int),np.pi*2*1e4)
+	results=[]
+	for delta in np.linspace(-0.005,0.005,20):
+		n1=5./4.*(1+delta)
+		meg=w.MEGNO_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,2*np.pi*1e4)
+		print n1,meg
+		results.append((n1,meg))
 
-	from rebound.interruptible_pool import InterruptiblePool	
-	pool = InterruptiblePool()
-	npts=20
-	pars = [(n1,n2) for n2 in np.linspace(0.75*(1-0.007),0.75*(1+0.007),npts) for n1 in np.linspace(1/0.75*(1-0.007),1/0.75*(1+0.007),npts) ]
-	results=pool.map(mapfn,pars)
-
-	np.savetxt("./megnoresults.txt",np.vstack(( np.array(pars).T , np.array(results) )).T)
-
-if __name__=="__main__":
+	results=np.array(results)
+	plt.plot(results[:,0],results[:,1])
+	plt.show()
+	
+if False: #__name__=="__main__":
 
 	parser = ArgumentParser(description='Run a grid of simulations and compute the MEGNO')
 	parser.add_argument('-N','--Ngrid',metavar='N',type=int,default=10,help='Number of grid points in each dimension')
