@@ -22,6 +22,18 @@ double mpow (double, int);
 double mpow2(double, int);
 void freeSimluation(ActionAngleSimulation* sim);
 
+int IntegrateSimulation(ActionAngleSimulation* sim, const double tFin){
+	const double t0 = sim->t;
+	const double dt = sim->dt;
+	const int Nstep = (int)((tFin - t0)/dt);
+
+	for(int i=0; i<Nstep; i++){	
+		SimulationStep(sim);
+	}
+	
+	return Nstep;
+}
+
 double CircularFirstOrderResonanceMEGNOIntegration
 (int NresIn, int* innerRes, int NresOut, int* outerRes,double mu1,double mu2,double n1,double n2, double tFin)
  {
@@ -96,6 +108,8 @@ void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int
 	sim->t=0;
 	sim->dt = dt;
 
+//	printf("from C:\t dt: %.5f \t sim->dt: %.5f\n",dt,sim->dt);
+
 
 }
 void intialize_megno_vars( MEGNO_Auxilary_Variables* megno){
@@ -113,7 +127,8 @@ void SimulationStep(ActionAngleSimulation* restrict sim){
 		ActionAngle_H0_Advance( &(sim->state) , &(sim->parameters), 0.5 * dt);
 		ActionAngle_Get_Var_Dot(&(sim->state), &(sim->rIn) , &(sim->rOut) , &(sim->parameters), t+dt);
 		ActionAngle_update_megno_eqations(&(sim->state) , &(sim->megno) ,t+dt,dt);
-		sim->t += dt;
+		sim->t +=dt;
+//		printf("from C:\t dt: %.5f \t sim->dt: %.5f \t sim->t: %.5f\n",dt,sim->dt,sim->t);
 
 }
 void initialize_pars(SimulationParameters* pars,double mu1,double mu2,double n1,double n2,double e1,double e2,double varpi2){

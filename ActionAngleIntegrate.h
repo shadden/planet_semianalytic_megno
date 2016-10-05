@@ -26,7 +26,6 @@ void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int
 									 double L0,double l0,double X0, double Y0,double dt);
 									 
 void SimulationStep(ActionAngleSimulation* restrict sim);
-
 void ActionAnglePhaseStateInitialize(ActionAnglePhaseState* restrict Z, double L0, double l0, double X0, double Y0);
 void ActionAngle_H0_Advance( ActionAnglePhaseState* restrict Z ,SimulationParameters* restrict pars,const double dt);
 void initialize_pars(SimulationParameters* pars,double ,double ,double ,double ,double,double,double);
