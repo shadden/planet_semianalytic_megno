@@ -23,7 +23,7 @@ p1dInt = get_ctype_ptr(c_int,1)
 
 class ResonanceData(Structure):
 	_fields_ = [("Nres",c_int),
-				("MAxOrder",c_int),
+				("MaxOrder",c_int),
 				("ResonanceIndices",POINTER(c_int)),
 				("ResonanceCoefficients",POINTER(c_double))]
 class PhaseState(Structure):
@@ -130,15 +130,20 @@ class libwrapper(object):
 		except:
 			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
 			return -1.
-		
+			
 if __name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()
-	res1=np.vstack((np.arange(4,7),np.ones(3),np.zeros(3))).T
-	res2=np.vstack((np.arange(4,7),np.ones(3),np.ones(3))).T
+# 	res1=np.vstack((np.arange(4,7),np.ones(3),np.zeros(3))).T
+# 	res1=np.append(res1,[[11,2,0]],axis=0)
+# 	res2=np.vstack((np.arange(4,7),np.ones(3),np.ones(3))).T
+# 	res2=np.append(res2,[[9,2,2]],axis=0)
+	res1=np.array([[11,2,0]])
+	res2=np.vstack([[5,1,1]])
+
 	m1=1e-5
-	m2=3.e-5
+	m2=1.e-5
 	e1=e2=0
 	varpi2=0
 	L0=2
@@ -146,17 +151,9 @@ if __name__=="__main__":
 	n1=5./4.*(1+0.005)
 	n2=4./5.*(1+0.009)
 	dt=2.*np.pi / 10.
+	meg=w.MEGNO_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,2*np.pi*1e4)
+	print meg
 	
-	results=[]
-	for delta in np.linspace(-0.005,0.005,20):
-		n1=5./4.*(1+delta)
-		meg=w.MEGNO_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,2*np.pi*1e4)
-		print n1,meg
-		results.append((n1,meg))
-
-	results=np.array(results)
-	plt.plot(results[:,0],results[:,1])
-	plt.show()
 	
 if False: #__name__=="__main__":
 
