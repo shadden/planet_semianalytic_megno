@@ -122,7 +122,6 @@ class libwrapper(object):
 		e1=0
 		e2=0
 		varpi2=0
-		
 		self._InitializeActionAngleSimulation(pointer(sim),Nres1,arrIn,Nres2,arrOut,m1,m2,n1,n2,e1,e2,varpi2,L0,l0,X0,Y0,dt)
 		try:
 			self._IntegrateSimulation(pointer(sim),tFin)
@@ -135,12 +134,9 @@ if __name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()
-# 	res1=np.vstack((np.arange(4,7),np.ones(3),np.zeros(3))).T
-# 	res1=np.append(res1,[[11,2,0]],axis=0)
-# 	res2=np.vstack((np.arange(4,7),np.ones(3),np.ones(3))).T
-# 	res2=np.append(res2,[[9,2,2]],axis=0)
-	res1=np.array([[11,2,0]])
-	res2=np.vstack([[5,1,1]])
+
+	res1=np.array([[5,1,0]])
+	res2=np.array([[5,1,1]])
 
 	m1=1e-5
 	m2=1.e-5
@@ -148,12 +144,39 @@ if __name__=="__main__":
 	varpi2=0
 	L0=2
 	X0=Y0=l0=0
-	n1=5./4.*(1+0.005)
-	n2=4./5.*(1+0.009)
+
 	dt=2.*np.pi / 10.
-	meg=w.MEGNO_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,2*np.pi*1e4)
-	print meg
 	
+	Ngrid=20
+	pars=[]
+	for delta2 in np.linspace(+0.005,-0.005,Ngrid):
+		for delta1 in np.linspace(-0.005,0.005,Ngrid):
+			n1 = 5. / 4. * (1+delta1)
+			n2 = 4. / 5. / (1+delta2)
+			pars.append((n1,n2))
+	
+	def f(x):
+		n1,n2=x
+		meg=w.MEGNO_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,2*np.pi*5e3)
+		return meg
+	
+	from rebound.interruptible_pool import InterruptiblePool
+	pool = InterruptiblePool()
+	results=pool.map(f,pars)
+	results2d = np.array(results).reshape(Ngrid,Ngrid)
+
+	fig = plt.figure(figsize=(7,5))
+	ax = plt.subplot(111)
+	delta=0.005
+	extent = [5. / 4. * (1-delta),5. / 4. * (1+delta),4. / 5. / (1+delta),4. / 5. / (1-delta)]
+	ax.set_xlim(extent[0],extent[1])
+	ax.set_xlabel("inner freq $n1$")
+	ax.set_ylim(extent[2],extent[3])
+	ax.set_ylabel("outer freq $n2$")
+	im = ax.imshow(results2d, interpolation="none", vmin=1.9, vmax=4, cmap="RdYlGn_r", origin="lower", aspect='auto', extent=extent)
+	cb = plt.colorbar(im, ax=ax)
+	cb.set_label("MEGNO $\\langle Y \\rangle$")
+	plt.show()
 	
 if False: #__name__=="__main__":
 
