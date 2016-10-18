@@ -109,6 +109,23 @@ class libwrapper(object):
 			print "FAILED ON INPUT: ",tfin,dt,period,ecc,mu1,mu2,Omega2
 			return -1.
 
+
+
+	def Setup_Integration_Analytic(self,n1,n2,m1,m2,resonances1,resonances2,dt):
+		Nres1 = resonances1.shape[0];
+		Nres2 = resonances2.shape[0];
+		arrIn=resonances1.astype(c_int).reshape(-1)
+		arrOut=resonances2.astype(c_int).reshape(-1)
+		sim = ActionAngleSimulation()
+		L0,l0,X0,Y0 = 2.0,0.,0.0,0.0
+		e1=0
+		e2=0
+		varpi2=0
+		self._InitializeActionAngleSimulation(pointer(sim),Nres1,arrIn,Nres2,arrOut,m1,m2,n1,n2,e1,e2,varpi2,L0,l0,X0,Y0,dt)
+		return sim
+
+
+
 	def MEGNO_Integration_Analytic(self,n1,n2,m1,m2,resonances1,resonances2,dt,tFin):
 		Nres1 = resonances1.shape[0];
 		Nres2 = resonances2.shape[0];
@@ -129,7 +146,87 @@ class libwrapper(object):
 		except:
 			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
 			return -1.
+
 			
+
+if False: #__name__=="__main__":
+	
+	w = libwrapper()
+	sim=ActionAngleSimulation()
+
+	res1=np.array([[3,1,0]])
+	res2=np.array([[5,1,1]])
+
+	m1=0*1.e-5
+	m2=1.e-5
+	e1=e2=0
+	varpi2=0
+	L0=2
+	X0=Y0=l0=0
+
+
+	
+	Ngrid=20
+	pars=[]
+	delta1 = 0.008;
+	delta2 = 0.01;
+	n1 = 3. / 2. * (1+delta1)
+	n2 = 2. / 3. / (1+delta2)
+
+
+
+	dt=2.*np.pi / 100.
+	tFin = 2*np.pi*50.
+	Nsteps = int( tFin / dt )
+	Ndump = 20
+	
+	import rebound
+	def SimulationSetup():
+		sim = rebound.Simulation()
+		sim.units= ('yr','AU','Msun')
+		sim.integrator = "whfast"
+		sim.integrator_whfast_safe_mode = 0
+		sim.exit_max_distance = 3.
+		sim.dt = dt / 2. / np.pi
+		sim.add(m=1.0);
+		sim.add(m=m1,id=1,a=n1**(-2./3.),theta=0);
+		sim.add(m=m2,id=2,a=n2**(-2./3.),theta=0);
+		sim.add(m=0.,id=3,a=1.,theta=0);
+		sim.move_to_com()
+		return sim
+
+
+	
+
+	sim = w.Setup_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt)
+	simNbody = SimulationSetup()
+		
+	
+	Npts=int(np.floor(Nsteps/Ndump)) 
+	data = np.zeros((2,Npts))
+	NBdata = np.zeros((2,Npts))
+	j=0	
+	for i in range(Nsteps):
+		if i%Ndump==0:
+
+			data[0,j] = i*dt
+			data[1,j] = sim.state.L
+			orbs=simNbody.calculate_orbits(heliocentric=True)
+			NBdata[0,j] = i*dt
+			NBdata[1,j] =orbs[-1].a
+			simNbody.integrate(i*dt/2./np.pi,exact_finish_time=0)
+			j=j+1
+
+			
+		w._SimulationStep(pointer(sim))
+
+	a0 = NBdata[1,0]
+	sma = a0 * 0.25 * (data[1])**2
+	plt.plot(NBdata[0],NBdata[1],'k-')
+	plt.plot(data[0],sma,'r-')
+	plt.show()
+		
+	
 if __name__=="__main__":
 	
 	w = libwrapper()
@@ -138,14 +235,14 @@ if __name__=="__main__":
 	res1=np.array([[5,1,0]])
 	res2=np.array([[5,1,1]])
 
-	m1=1e-5
+	m1=1.e-5
 	m2=1.e-5
 	e1=e2=0
 	varpi2=0
 	L0=2
 	X0=Y0=l0=0
 
-	dt=2.*np.pi / 10.
+	dt=2.*np.pi / 30.
 	
 	Ngrid=20
 	pars=[]
@@ -178,95 +275,3 @@ if __name__=="__main__":
 	cb.set_label("MEGNO $\\langle Y \\rangle$")
 	plt.show()
 	
-if False: #__name__=="__main__":
-
-	parser = ArgumentParser(description='Run a grid of simulations and compute the MEGNO')
-	parser.add_argument('-N','--Ngrid',metavar='N',type=int,default=10,help='Number of grid points in each dimension')
-	parser.add_argument('-C','--checkpoints',metavar='N',type=int,default=0,help='Number of checkpoints')
-	parser.add_argument('--restart', default=False, action='store_true', help='continue a previously-existing run')
-	parser.add_argument('-T','--Time',metavar='t',type=float,default=5.0e4,help='Lengh of simulations')
-	parser.add_argument('-F','--infile',metavar='<FILE>',default='input.txt',help='Text file with period ranges')
-
-	args = parser.parse_args()
-	Ngrid = args.Ngrid
-	simLength = args.Time * 2 * np.pi
-	infile = args.infile
-	checkpoints = args.checkpoints + 1
-	restart = args.restart
-
-	with open(infile,'r') as fi:
-		planetMass1,planetMass2 = map(float, fi.readline().split() )
-		n1min,n1max = map(float, fi.readline().split() )
-		n2min,n2max = map(float, fi.readline().split() )
-		e1,w1  = map(float, fi.readline().split() )
-		e2,w2  = map(float, fi.readline().split() )
-		etp,wtp  = map(float, fi.readline().split() )
-		theta1,theta2,thetatp=map(float,fi.readline().split())
-		Mtp  = map(float, fi.readline().split() )[0]
-
-	print "Sim. length:", simLength
-	print "Planet 1: m=%.1e , e=%.3f , w= %.3f deg. , theta= %.3f deg."%(planetMass1,e1,w1,theta1)
-	print "Planet 2: m=%.1e , e=%.3f , w= %.3f deg. , theta= %.3f deg."%(planetMass2,e2,w2,theta2)
-	print "Test particle: m=%.1e , e=%.3f , w= %.3f deg. , theta= %.3f deg."%(Mtp,etp,wtp,thetatp)
-
-	w1 = np.pi * w1 / 180.
-	w2 = np.pi * w2 / 180.
-	wtp = np.pi * wtp / 180.
-	theta1 = np.pi * theta1 / 180.
-	theta2 = np.pi * theta2 / 180.
-	thetatp = np.pi * thetatp / 180.
-
-
-	rHill = ( np.max([ planetMass1,planetMass2 ]) /3.)**(1./3.)
-
-	w = libwrapper()
-
-# 	def f(pars):
-# 		n1,n2 = pars
-# 		n1 = n1 / 2. / np.pi
-# 		n2 = n2 / 2. / np.pi
-# 		period = n1
-# 		omega2 = n2 / n1
-# 		return w.MEGNO_Integration(simLength, 2*np.pi/30. ,period,0.,planetMass1,planetMass2,omega2)
-	
-	def f(pars):
-		n1,n2 = pars
-		n1 = n1 / 2. / np.pi
-		n2 = n2 / 2. / np.pi
-		return w.MEGNO_Integration_Analytic(n1,n2,planetMass1,planetMass2,np.array([7,8],dtype=c_int),np.array([8,9],dtype=c_int),simLength)
-
-
-	par_d1 =  np.linspace(n1min,n1max,Ngrid+1)[:-1] 
-	par_d2 =  np.linspace(n2min,n2max,Ngrid+1)[:-1]
-
-	parameters = []
-	for d2 in par_d2:
-		for d1 in par_d1:
-			parameters.append((d1,d2))
-
-	parameters = np.array(parameters)
-	from rebound.interruptible_pool import InterruptiblePool	
-	pool = InterruptiblePool()
-	if restart:
-		import re
-		import glob
-		checkpointfiles = glob.glob("checkpoint_*.dat")
-		exprn = re.compile("checkpoint_(\d+)")
-		checkPointNumbers = [ int(re.search(exprn,x).group(1)) for x in checkpointfiles ]
-		cMax = np.max(checkPointNumbers)
-		results = np.fromfile("checkpoint_%d.dat"%cMax).tolist()
-		print "Restarting from checkpoint file checkpoint_%d.dat..."%cMax
-		sys.stdout.flush()
-	else:
-		results = []
-		cMax = -1
-
-	for c in range(checkpoints)[cMax+1:]:
-		index_low = c*len(parameters)/checkpoints
-		index_high = (c+1)*len(parameters)/checkpoints
-		results = results + pool.map(f , parameters[index_low:index_high])
-		np.array(results).tofile("checkpoint_%d.dat"%c)
-	
-	resultsArr = np.hstack((np.array(parameters),np.array(results).reshape(-1,1) ))
-	np.save("MEGNO_RESULTS.npy",resultsArr)
-	resultsArr.tofile("MEGNO_RESULTS.dat")
