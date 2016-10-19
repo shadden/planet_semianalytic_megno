@@ -102,6 +102,14 @@ class libwrapper(object):
 		self._IntegrateSimulation.argtypes = [POINTER(ActionAngleSimulation),c_double] 
 		self._IntegrateSimulation.restype = c_int
 		
+		self._mpow2 = self.lib.mpow2
+		self._mpow2.argtypes = [c_double,c_int]
+		self._mpow2.restype = c_double
+
+		self._mpow = self.lib.mpow
+		self._mpow.argtypes = [c_double,c_int]
+		self._mpow.restype = c_double
+		
 	def MEGNO_Integration(self,tfin,dt,period,ecc,mu1,mu2,Omega2):
 		try:
 			return self._MEGNO_Integration(tfin,dt,period,ecc,mu1,mu2,Omega2)
@@ -111,13 +119,12 @@ class libwrapper(object):
 
 
 
-	def Setup_Integration_Analytic(self,n1,n2,m1,m2,resonances1,resonances2,dt):
+	def Setup_Integration_Analytic(self,n1,n2,m1,m2,resonances1,resonances2,dt,L0,l0,X0,Y0):
 		Nres1 = resonances1.shape[0];
 		Nres2 = resonances2.shape[0];
 		arrIn=resonances1.astype(c_int).reshape(-1)
 		arrOut=resonances2.astype(c_int).reshape(-1)
 		sim = ActionAngleSimulation()
-		L0,l0,X0,Y0 = 2.0,0.,0.0,0.0
 		e1=0
 		e2=0
 		varpi2=0
@@ -149,36 +156,36 @@ class libwrapper(object):
 
 			
 
-if False: #__name__=="__main__":
+if __name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
-	res1=np.array([[3,1,0]])
+	res1=np.array([[7,2,0]])
 	res2=np.array([[5,1,1]])
 
-	m1=0*1.e-5
-	m2=1.e-5
+	m1=1.e-5
+	m2=0*1.e-5
 	e1=e2=0
 	varpi2=0
 	L0=2
-	X0=Y0=l0=0
+	Y0=l0=0
+	e0 = 0.01
+	X0 = np.sqrt(2) * e0
 
 
 	
-	Ngrid=20
-	pars=[]
-	delta1 = 0.008;
+	delta1 = -0.0005;
 	delta2 = 0.01;
-	n1 = 3. / 2. * (1+delta1)
+	n1 = 7. / 5. * (1+delta1)
 	n2 = 2. / 3. / (1+delta2)
 
 
 
-	dt=2.*np.pi / 100.
-	tFin = 2*np.pi*50.
+	dt=2.*np.pi / 50.
+	tFin = 2*np.pi * 300. * 10 * 2
 	Nsteps = int( tFin / dt )
-	Ndump = 20
+	Ndump = 3*20 * 10 
 	
 	import rebound
 	def SimulationSetup():
@@ -191,43 +198,57 @@ if False: #__name__=="__main__":
 		sim.add(m=1.0);
 		sim.add(m=m1,id=1,a=n1**(-2./3.),theta=0);
 		sim.add(m=m2,id=2,a=n2**(-2./3.),theta=0);
-		sim.add(m=0.,id=3,a=1.,theta=0);
+		sim.add(m=0.,id=3,a=1.,e=e0,pomega=0,theta=0);
 		sim.move_to_com()
 		return sim
 
 
 	
 
-	sim = w.Setup_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt)
+	sim = w.Setup_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,L0,l0,X0,Y0)
 	simNbody = SimulationSetup()
 		
 	
 	Npts=int(np.floor(Nsteps/Ndump)) 
-	data = np.zeros((2,Npts))
-	NBdata = np.zeros((2,Npts))
+	data = np.zeros((4,Npts))
+	NBdata = np.zeros((3,Npts))
 	j=0	
 	for i in range(Nsteps):
-		if i%Ndump==0:
+		if i%Ndump==0 and j<Npts:
 
 			data[0,j] = i*dt
 			data[1,j] = sim.state.L
-			orbs=simNbody.calculate_orbits(heliocentric=True)
+			data[2,j] = np.sqrt(sim.state.X*sim.state.X + sim.state.Y*sim.state.Y) / np.sqrt(2)
+			data[3,j] = sim.megno.megno
+			orbs=simNbody.calculate_orbits()
 			NBdata[0,j] = i*dt
 			NBdata[1,j] =orbs[-1].a
+			NBdata[2,j] =orbs[-1].e
 			simNbody.integrate(i*dt/2./np.pi,exact_finish_time=0)
 			j=j+1
+			
+
 
 			
 		w._SimulationStep(pointer(sim))
 
+	fig,ax = plt.subplots(3,1,sharex=True)	
 	a0 = NBdata[1,0]
 	sma = a0 * 0.25 * (data[1])**2
-	plt.plot(NBdata[0],NBdata[1],'k-')
-	plt.plot(data[0],sma,'r-')
+	ax[0].plot(NBdata[0],NBdata[1],'k-')
+	ax[0].plot(data[0],sma,'r-')
+# 
+	ax[1].plot(NBdata[0],NBdata[2],'k-')
+	ax[1].plot(data[0],data[2],'r-')
+# 
+	ax[2].plot(data[0],data[3],'r-')
+	ax[2].set_ylim((1.5,3.))
+
 	plt.show()
-		
 	
-if __name__=="__main__":
+
+	
+if False:#__name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()

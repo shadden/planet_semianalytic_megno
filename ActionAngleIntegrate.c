@@ -461,7 +461,7 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 	double DLdotDl=0,DYdotDl=0,DXdotDl=0,DXdotDY=0,DYdotDX=0,DXdotDX=0;
 	
 	// Zero-th order resonance effects
-// 	
+
 	double psi =  l0 - Dn2 * t  ;
 	double rsq = 1 + alpha*alpha - 2 * alpha * cos(psi);
 	double r = sqrt(rsq);
