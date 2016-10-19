@@ -352,8 +352,8 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 	double alpha = pow(n1,-2./3.);
 	double rsq = 1 + alpha*alpha - 2 * alpha * cos(l0);
 	double r = sqrt(rsq);
-	Ldot += -2 * mu1 * (alpha * sin(l0) / rsq / r - alpha * sin(l0) );
-	DLdotDl += -2 * mu1 * ( alpha * cos(l0) / rsq / r - 3 * alpha * alpha * sin(l0) * sin(l0) / rsq / rsq / r - alpha * cos(l0));
+	Ldot += -2 * mu1 * (alpha * sin(l0) / rsq / r -  alpha * sin(l0)  );
+	DLdotDl += -2 * mu1 * ( alpha * cos(l0) / rsq / r - 3 * alpha * alpha * sin(l0) * sin(l0) / rsq / rsq / r -  alpha * cos(l0) );
 	
 	// Add up inner planet effects 
 	
@@ -379,10 +379,14 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 		DYdotDl += -factor * j * sintheta;
 		DXdotDl +=  factor * j * costheta;
 		DLdotDl += -2 * mu1  * coeff * j*j * mpow(e1,p) * mpow(E,o-p) * cos(theta + g0);		
-		factor  = o >= p+2 ? -RT2 * mu1 * coeff * (o-p) * (o-p-1) * mpow(e1,p) * mpow(E,o-p-2) : 0;
-		DXdotDX +=  0.5 * factor * sin(theta-g0) ;
+
+		factor  = o >= p+2 ? -2 * mu1 * coeff * (o-p) * (o-p-1) * mpow(e1,p) * mpow(E,o-p-2) : 0;
+
+		DXdotDX +=  0.5 * factor * sin(theta-g0) ;	
 		DYdotDX +=  0.5 * factor * cos(theta-g0) ;
-		DXdotDY += -0.5 * factor * cos(theta-g0);
+		DXdotDY +=  0.5 * factor * cos(theta-g0) ;
+		
+
 	}
 	// Coordinates z_i are:
 	//	i	coord
@@ -403,33 +407,32 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 	Hij[0][1] = -DXdotDl ; // H_l,Y
 	Hij[0][2] =  0.	   ; // H_l,L		
 	Hij[0][3] =  DYdotDl ; // H_l,X	
+
 	Hij[1][1] = -DXdotDY ; // H_Y,Y
 	Hij[1][2] = 0.       ; // H_Y,L
+	Hij[1][3] = -DXdotDX  ; // H_Y,X
+
 	Hij[2][2] = 0.       ; // H_L,L
 	Hij[2][3] = 0.       ; // H_L,X
+
 	Hij[3][3] = DYdotDX  ; // H_X,X
-
-
+	
 	int row,col;
+	
 	double jacobian_ij;
 	for(row=0;row<4;row++){
 		for(col=0;col<4;col++){
-			if(col>row){
-				Hij[col][row]=Hij[row][col];
+		jacobian_ij = 0;
+		for(int l=0; l<4; l++){
+			if(l>col){
+				Hij[l][col] = Hij[col][l];
 			}
-			jacobian_ij = 0;
-			for(int l=0; l<4; l++){
-				jacobian_ij+= symplecticJ[row][l]* Hij[l][col];
-			}
-			*( jacobian + INDX(row,col) ) = jacobian_ij;
+			jacobian_ij+= symplecticJ[row][l] * Hij[l][col];
+		}
+				*( jacobian + INDX(row,col) ) = jacobian_ij;
 		}
 	}
-	
 
-	
-	
-	
-	
 }
 
 void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, ResonanceData* restrict rOut ,const double mu2, const double n1,const double n2, const double e2,const double varpi2, const double t){
@@ -490,11 +493,12 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 		// Variationals
 		DYdotDl += -factor * (o-j) * sintheta;
 		DXdotDl +=  factor * (o-j) * costheta;
-		DLdotDl += -2 * alpha * mu2  * coeff * (o-j)* (o-j) * mpow(e2,o-p) * mpow(E,p) * cos(theta + g0);	
-		factor = p>=2 ? -alpha * mu2 * RT2 * coeff * p * (p-1) * mpow(E,p-2) * mpow(e2,o-p) : 0 ;
-		DXdotDX +=  0.5 * factor * sin(theta-g0) ;
+		DLdotDl += -2 * alpha * mu2  * coeff * (o-j)* (o-j) * 	(e2,o-p) * mpow(E,p) * cos(theta + g0);	
+		factor = p>=2 ? -alpha * mu2 * 2 * coeff * p * (p-1) * mpow(E,p-2) * mpow(e2,o-p) : 0 ;
+
+		DXdotDX +=  0.5 * factor * sin(theta-g0) ;	
 		DYdotDX +=  0.5 * factor * cos(theta-g0) ;
-		DXdotDY += -0.5 * factor * cos(theta-g0);
+		DXdotDY +=  0.5 * factor * cos(theta-g0) ;
 	}
 	// Coordinates z_i are:
 	//	i	coord
@@ -515,25 +519,28 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 	Hij[0][1] = -DXdotDl ; // H_l,Y
 	Hij[0][2] =  0.	   ; // H_l,L		
 	Hij[0][3] =  DYdotDl ; // H_l,X	
+
 	Hij[1][1] = -DXdotDY ; // H_Y,Y
 	Hij[1][2] = 0.       ; // H_Y,L
+	Hij[1][3] = -DXdotDX  ; // H_Y,X
+
 	Hij[2][2] = 0.       ; // H_L,L
 	Hij[2][3] = 0.       ; // H_L,X
+
 	Hij[3][3] = DYdotDX  ; // H_X,X
 
 
-	int row,col;
 	double jacobian_ij;
-	for(row=0;row<4;row++){
-		for(col=0;col<4;col++){
-			if(col>row){
-				Hij[col][row]=Hij[row][col];
+	for(int row=0;row<4;row++){
+		for(int col=0;col<4;col++){
+		jacobian_ij = 0;
+		for(int l=0; l<4; l++){
+			if(l>col){
+				Hij[l][col] = Hij[col][l];
 			}
-			jacobian_ij = 0;
-			for(int l=0; l<4; l++){
-				jacobian_ij+= symplecticJ[row][l]* Hij[l][col];
-			}
-			*( jacobian + INDX(row,col) ) = jacobian_ij;
+			jacobian_ij+= symplecticJ[row][l] * Hij[l][col];
+		}
+				*( jacobian + INDX(row,col) ) = jacobian_ij;
 		}
 	}
 	
