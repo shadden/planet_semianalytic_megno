@@ -156,7 +156,7 @@ class libwrapper(object):
 
 			
 
-if __name__=="__main__":
+if False:#__name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()
@@ -248,13 +248,16 @@ if __name__=="__main__":
 	
 
 	
-if False:#__name__=="__main__":
+if __name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
-	res1=np.array([[5,1,0]])
-	res2=np.array([[5,1,1]])
+	Ngrid=50
+	n10 =15./13.
+	n20 =15./17.
+	res1=np.array([[15,2,0],[7,1,0],[8,1,0]])
+	res2=np.array([[17,2,2],[9,1,1],[8,1,1]])
 
 	m1=1.e-5
 	m2=1.e-5
@@ -265,17 +268,16 @@ if False:#__name__=="__main__":
 
 	dt=2.*np.pi / 30.
 	
-	Ngrid=20
 	pars=[]
 	for delta2 in np.linspace(+0.005,-0.005,Ngrid):
 		for delta1 in np.linspace(-0.005,0.005,Ngrid):
-			n1 = 5. / 4. * (1+delta1)
-			n2 = 4. / 5. / (1+delta2)
+			n1 = n10 * (1+delta1)
+			n2 = n20 / (1+delta2)
 			pars.append((n1,n2))
 	
 	def f(x):
 		n1,n2=x
-		meg=w.MEGNO_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,2*np.pi*5e3)
+		meg=w.MEGNO_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,2*np.pi*3e3)
 		return meg
 	
 	from rebound.interruptible_pool import InterruptiblePool
@@ -285,8 +287,8 @@ if False:#__name__=="__main__":
 
 	fig = plt.figure(figsize=(7,5))
 	ax = plt.subplot(111)
-	delta=0.005
-	extent = [5. / 4. * (1-delta),5. / 4. * (1+delta),4. / 5. / (1+delta),4. / 5. / (1-delta)]
+	delta=0.01
+	extent = [ n10 * (1-delta), n10 * (1+delta), n20 / (1+delta), n20 / (1-delta)]
 	ax.set_xlim(extent[0],extent[1])
 	ax.set_xlabel("inner freq $n1$")
 	ax.set_ylim(extent[2],extent[3])
