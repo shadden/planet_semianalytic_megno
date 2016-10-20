@@ -12,14 +12,14 @@
 #define INDX(ROW,COL) 4 * ROW + COL
 
 const double L0 = 2.;
-const double l0= -1./5.;
+const double l0= 1.;
 const double X0=1;
 const double Y0=1;
 
 const double mu1 = 1;
 const double mu2 = 1;
-const double n1 = 7./5.;
-const double n2 = 5./7.;
+const double n1 = 15./13.;
+const double n2 = 15./17.;
 const double e1=0.;
 const double e2=0.;
 const double varpi2=0.;
@@ -81,11 +81,34 @@ int main(){
 
 #endif
 #if DERIVS
-	AddResonance(&r1,7,2,2,alphaOut0 );
+
+	AddResonance(&r,15,2,0,alphaIn0 );
+
+	AddResonance(&r1,17,2,2,alphaOut0 );
+
 	double* derivs =  malloc(4*sizeof(double));
 	double* jacobian =  malloc(4*4*sizeof(double));
-	H1_Outer_Derivs(derivs,jacobian,&state,&r1,mu1,n1,n2,e2,0,0);
 
+	H1_Inner_Derivs(derivs,jacobian,&state,&r,mu1,n1,e1,0);
+	
+	printf("\n INNER PLANET \n");
+	printf("\nDerivatives\n");
+	for(int i=0; i<4; i++){
+	printf("%.8g\t",derivs[i]);
+	}
+	
+	printf("\n\nJacobian \n");
+	
+	for(int i=0; i<4; i++){
+		for(int j=0; j<4; j++){
+			printf("%.5g\t", *(jacobian + INDX(i,j)));
+		}
+	printf("\n");
+	}
+
+	H1_Outer_Derivs(derivs,jacobian,&state,&r1,mu2,n1,n2,e2,0,0);
+	
+	printf("\n OUTER PLANET \n");
 	printf("\nDerivatives\n");
 	for(int i=0; i<4; i++){
 	printf("%.8g\t",derivs[i]);

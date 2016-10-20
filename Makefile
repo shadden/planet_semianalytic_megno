@@ -17,5 +17,5 @@ run: testme
 resonances_test: resonances_test.c LaplaceCoefficients.o
 	$(CC) -std=c99 -o $@ $^
 action_angle_test: action_angle_test.c ActionAngleIntegrate.o LaplaceCoefficients.o 
-	$(CC) -std=c99 -o $@ $^
+	$(CC) -std=c99 -lm -o  $@ $^
  
