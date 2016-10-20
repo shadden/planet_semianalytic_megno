@@ -493,7 +493,8 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 		// Variationals
 		DYdotDl += -factor * (o-j) * sintheta;
 		DXdotDl +=  factor * (o-j) * costheta;
-		DLdotDl += -2 * alpha * mu2  * coeff * (o-j)* (o-j) * 	(e2,o-p) * mpow(E,p) * cos(theta + g0);	
+		DLdotDl += -2 * alpha * mu2  * coeff * (o-j)* (o-j) * mpow(e2,o-p) * mpow(E,p) * cos(theta + g0);	
+		
 		factor = p>=2 ? -alpha * mu2 * 2 * coeff * p * (p-1) * mpow(E,p-2) * mpow(e2,o-p) : 0 ;
 
 		DXdotDX +=  0.5 * factor * sin(theta-g0) ;	
