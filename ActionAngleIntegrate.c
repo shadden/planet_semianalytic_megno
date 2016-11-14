@@ -108,7 +108,6 @@ void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int
 	sim->t=0;
 	sim->dt = dt;
 
-//	printf("from C:\t dt: %.5f \t sim->dt: %.5f\n",dt,sim->dt);
 
 
 }
@@ -128,7 +127,6 @@ void SimulationStep(ActionAngleSimulation* restrict sim){
 		ActionAngle_Get_Var_Dot(&(sim->state), &(sim->rIn) , &(sim->rOut) , &(sim->parameters), t+dt);
 		ActionAngle_update_megno_eqations(&(sim->state) , &(sim->megno) ,t+dt,dt);
 		sim->t +=dt;
-//		printf("from C:\t dt: %.5f \t sim->dt: %.5f \t sim->t: %.5f\n",dt,sim->dt,sim->t);
 
 }
 void initialize_pars(SimulationParameters* pars,double mu1,double mu2,double n1,double n2,double e1,double e2,double varpi2){
