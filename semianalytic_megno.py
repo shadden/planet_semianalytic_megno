@@ -155,6 +155,26 @@ class libwrapper(object):
 			return -1.
 
 			
+	def MEGNO_Integration_Analytic_Full(self,m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,resonances1,resonances2,dt,tFin):
+		Nres1 = resonances1.shape[0];
+		Nres2 = resonances2.shape[0];
+
+		arrIn=resonances1.astype(c_int).reshape(-1)
+		arrOut=resonances2.astype(c_int).reshape(-1)
+		
+		sim = ActionAngleSimulation()
+		
+		varpi2=w2-w1
+		varpiTp=wtp-w1
+		
+		L0,l0,X0,Y0 = 2.0,0.,np.sqrt(2.)*etp*np.cos(varpiTp),np.sqrt(2.)*etp*np.sin(varpiTp)
+		self._InitializeActionAngleSimulation(pointer(sim),Nres1,arrIn,Nres2,arrOut,m1,m2,n1,n2,e1,e2,varpi2,L0,l0,X0,Y0,dt)
+		try:
+			self._IntegrateSimulation(pointer(sim),tFin)
+			return sim.megno.megno
+		except:
+			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
+			return -1.
 
 if False:#__name__=="__main__":
 	
