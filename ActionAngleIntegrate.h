@@ -21,7 +21,7 @@ typedef struct ActionAngleSimulation {
 	double dt;
 } ActionAngleSimulation;
 
-void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int* innerRes,int NresOut, int* outerRes,\
+void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int includeInnerZeroth, int* innerRes,int NresOut,int includeOuterZeroth, int* outerRes,\
 									 double mu1,double mu2,double n1,double n2,double e1,double e2,double varpi2,\
 									 double L0,double l0,double X0, double Y0,double dt);
 									 

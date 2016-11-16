@@ -24,11 +24,12 @@ double SecondOrderI1O1(int k,double a);
 double SecondOrderI0O2(int k,double a);
 
 
-void initialize_ResonanceData( ResonanceData * r){
+void initialize_ResonanceData( ResonanceData * r,int inclue0th){
 	r->Nres =0;
 	r->MaxOrder=0;
 	r->ResonanceIndices=NULL;
 	r->ResonanceCoefficients=NULL;
+	r-> IncludeZeroth = inclue0th;
 }
 
 void free_ResonanceData( ResonanceData * r){

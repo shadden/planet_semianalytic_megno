@@ -53,7 +53,7 @@ double CircularFirstOrderResonanceMEGNOIntegration
 		outerResArr[3*j+1]=1;
 		outerResArr[3*j+2]=1;
 	}
-	InitializeActionAngleSimulation(&sim,NresIn, innerResArr,NresOut,outerResArr,mu1,mu2,n1,n2,0.,0.,0.,L0,l0,X0,Y0,dt);
+	InitializeActionAngleSimulation(&sim,NresIn,true, innerResArr,NresOut,true,outerResArr,mu1,mu2,n1,n2,0.,0.,0.,L0,l0,X0,Y0,dt);
 		
 	int Nstep;
 	Nstep = (int)(tFin/dt);
@@ -73,7 +73,7 @@ double CircularFirstOrderResonanceMEGNOIntegration
 static inline double random_real(){
         return -1+2.*((float)rand())/RAND_MAX;
 }
-void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int* innerRes,int NresOut, int* outerRes,\
+void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int includeInnerZeroth, int* innerRes,int NresOut,int includeOuterZeroth, int* outerRes,\
 									 double mu1,double mu2,double n1,double n2,double e1,double e2,double varpi2,\
 									 double L0,double l0,double X0, double Y0,double dt)
 									 {
@@ -88,8 +88,8 @@ void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int
 	ActionAnglePhaseStateInitialize(&(sim->state),  L0,  l0,  X0,  Y0);
 	intialize_megno_vars(&(sim->megno));
 	
-	initialize_ResonanceData(&(sim->rIn));
-	initialize_ResonanceData(&(sim->rOut));
+	initialize_ResonanceData(&(sim->rIn),includeInnerZeroth);
+	initialize_ResonanceData(&(sim->rOut),includeOuterZeroth);
 	
 	int j,o,p;
 	for(int i=0;i<NresIn;i++){
@@ -346,13 +346,13 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 	double DLdotDl=0,DYdotDl=0,DXdotDl=0,DXdotDY=0,DYdotDX=0,DXdotDX=0;
 
 	// Zero-th order resonance effects
-	
-	double alpha = pow(n1,-2./3.);
-	double rsq = 1 + alpha*alpha - 2 * alpha * cos(l0);
-	double r = sqrt(rsq);
-	Ldot += -2 * mu1 * (alpha * sin(l0) / rsq / r -  alpha * sin(l0)  );
-	DLdotDl += -2 * mu1 * ( alpha * cos(l0) / rsq / r - 3 * alpha * alpha * sin(l0) * sin(l0) / rsq / rsq / r -  alpha * cos(l0) );
-	
+	if (rIn->IncludeZeroth){
+		double alpha = pow(n1,-2./3.);
+		double rsq = 1 + alpha*alpha - 2 * alpha * cos(l0);
+		double r = sqrt(rsq);
+		Ldot += -2 * mu1 * (alpha * sin(l0) / rsq / r -  alpha * sin(l0)  );
+		DLdotDl += -2 * mu1 * ( alpha * cos(l0) / rsq / r - 3 * alpha * alpha * sin(l0) * sin(l0) / rsq / rsq / r -  alpha * cos(l0) );
+	}
 	// Add up inner planet effects 
 	
 	for(int i=0; i<NresIn; i++){
@@ -460,13 +460,14 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 	
 	// Zero-th order resonance effects
 
-	double psi =  l0 - Dn2 * t  ;
-	double rsq = 1 + alpha*alpha - 2 * alpha * cos(psi);
-	double r = sqrt(rsq);
-
-	Ldot += -2 * alpha * mu2 * ( alpha * sin(psi) / rsq / r -  alpha * sin(psi) );
-	DLdotDl += -2 * alpha * mu2 * ( alpha * cos(psi) / rsq / r - 3 * alpha * alpha * sin(psi) * sin(psi) / rsq / rsq / r - alpha * cos(psi));
-
+	if (rOut->IncludeZeroth){
+		double psi =  l0 - Dn2 * t  ;
+		double rsq = 1 + alpha*alpha - 2 * alpha * cos(psi);
+		double r = sqrt(rsq);
+	
+		Ldot += -2 * alpha * mu2 * ( alpha * sin(psi) / rsq / r -  alpha * sin(psi) );
+		DLdotDl += -2 * alpha * mu2 * ( alpha * cos(psi) / rsq / r - 3 * alpha * alpha * sin(psi) * sin(psi) / rsq / rsq / r - alpha * cos(psi));
+	}
 
 
 	// Add up resonances 
