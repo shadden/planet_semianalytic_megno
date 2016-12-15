@@ -290,7 +290,7 @@ if __name__=="__main__":
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
-	Ngrid=10
+	Ngrid=200
 	n10 =15./13.
 	n20 =15./17.
 	res1=np.array([[15,2,0],[7,1,0],[8,1,0]])
