@@ -299,7 +299,7 @@ if __name__=="__main__":
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
-	Ngrid=15
+	Ngrid=25
 	n10 =1.5
 	n20 =2./3.
 
