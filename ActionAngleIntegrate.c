@@ -53,7 +53,7 @@ double CircularFirstOrderResonanceMEGNOIntegration
 		outerResArr[3*j+1]=1;
 		outerResArr[3*j+2]=1;
 	}
-	InitializeActionAngleSimulation(&sim,NresIn,true, innerResArr,NresOut,true,outerResArr,mu1,mu2,n1,n2,0.,0.,0.,L0,l0,X0,Y0,dt);
+	InitializeActionAngleSimulation(&sim,NresIn,true, innerResArr,NresOut,true,outerResArr,mu1,mu2,n1,n2,0.,0.,0.,0.,L0,l0,X0,Y0,dt);
 		
 	int Nstep;
 	Nstep = (int)(tFin/dt);
@@ -74,7 +74,7 @@ static inline double random_real(){
         return -1+2.*((float)rand())/RAND_MAX;
 }
 void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int includeInnerZeroth, int* innerRes,int NresOut,int includeOuterZeroth, int* outerRes,\
-									 double mu1,double mu2,double n1,double n2,double e1,double e2,double varpi2,\
+									 double mu1,double mu2,double n1,double n2,double e1,double e2,double lambda2, double varpi2,\
 									 double L0,double l0,double X0, double Y0,double dt)
 									 {
 	ActionAnglePhaseState state;
@@ -84,7 +84,7 @@ void InitializeActionAngleSimulation(ActionAngleSimulation* sim, int NresIn, int
 	double alphaIn0=pow(1./n1,1./1.5);
 	double alphaOut0=pow(n2,1./1.5);
 
-	initialize_pars(&(sim->parameters),mu1,mu2,n1,n2,e1,e2,varpi2);
+	initialize_pars(&(sim->parameters),mu1,mu2,n1,n2,e1,e2,lambda2, varpi2);
 	ActionAnglePhaseStateInitialize(&(sim->state),  L0,  l0,  X0,  Y0);
 	intialize_megno_vars(&(sim->megno));
 	
@@ -129,13 +129,14 @@ void SimulationStep(ActionAngleSimulation* restrict sim){
 		sim->t +=dt;
 
 }
-void initialize_pars(SimulationParameters* pars,double mu1,double mu2,double n1,double n2,double e1,double e2,double varpi2){
+void initialize_pars(SimulationParameters* pars,double mu1,double mu2,double n1,double n2,double e1,double e2,double lambda2,double varpi2){
 	pars->mu1=mu1;
 	pars->mu2=mu2;
 	pars->n1=n1;
 	pars->n2=n2;
 	pars->e1=e1;
 	pars->e2=e2;
+	pars->lambda2=lambda2;
 	pars->varpi2=varpi2;
 }
 void ActionAnglePhaseStateInitialize(ActionAnglePhaseState* restrict Z, double L0, double l0, double X0, double Y0){
@@ -198,6 +199,7 @@ void ActionAngle_H1_Advance_StormerVerlet(ActionAnglePhaseState* Z, ResonanceDat
 	const double n2 = pars->n2;
 	const double e1 = pars->e1;
 	const double e2 = pars->e2;
+	const double lambda2 = pars->lambda2;
 	const double varpi2 = pars->varpi2;
 	const double var[4] = {(Z->dl),(Z->dY),(Z->dL),(Z->dX)};
 
@@ -207,7 +209,7 @@ void ActionAngle_H1_Advance_StormerVerlet(ActionAnglePhaseState* Z, ResonanceDat
 
 	
 	H1_Inner_Derivs(derivsIn,jacobianIn,Z,rIn ,mu1, n1,  e1, t);
-	H1_Outer_Derivs(derivsOut,jacobianOut,Z,rOut,mu2,n1,n2,e2,varpi2,t);
+	H1_Outer_Derivs(derivsOut,jacobianOut,Z,rOut,mu2,n1,n2,e2,lambda2,varpi2,t);
 
 	YdotOld = *(derivsIn+1) + *(derivsOut+1); 
 	XdotOld = *(derivsIn+3) + *(derivsOut+3);
@@ -228,7 +230,7 @@ void ActionAngle_H1_Advance_StormerVerlet(ActionAnglePhaseState* Z, ResonanceDat
 	}
 	
 	H1_Inner_Derivs(derivsIn,jacobianIn,Z,rIn ,mu1, n1,  e1, t);
-	H1_Outer_Derivs(derivsOut,jacobianOut,Z,rOut,mu2,n1,n2,e2,varpi2,t);
+	H1_Outer_Derivs(derivsOut,jacobianOut,Z,rOut,mu2,n1,n2,e2,lambda2,varpi2,t);
 	
 
 	Ldot = *(derivsIn+2) + *(derivsOut+2) ;
@@ -252,12 +254,6 @@ void ActionAngle_H1_Advance_StormerVerlet(ActionAnglePhaseState* Z, ResonanceDat
 	Z->dY+= dt_2 * ( vardotOld[1] + vardotNew[1] );
 	Z->dL+= dt_2 * ( vardotOld[2] + vardotNew[2] );
 	Z->dX+= dt_2 * ( vardotOld[3] + vardotNew[3] );
-
-//	Z->dldot += 0.5 * ( vardotOld[0] + vardotNew[0] );
-//	Z->dYdot += 0.5 * ( vardotOld[1] + vardotNew[1] );
-//	Z->dLdot += 0.5 * ( vardotOld[2] + vardotNew[2] );
-//	Z->dXdot += 0.5 * ( vardotOld[3] + vardotNew[3] );
-
 	
 	free(derivsIn);
 	free(derivsOut);
@@ -277,6 +273,7 @@ void ActionAngle_Get_Var_Dot(ActionAnglePhaseState* state, ResonanceData* restri
 	const double n2 = pars->n2;
 	const double e1 = pars->e1;
 	const double e2 = pars->e2;
+	const double lambda2 = pars->lambda2;
 	const double varpi2 = pars->varpi2;
 
 	ActionAnglePhaseState p1 = *state;
@@ -287,7 +284,7 @@ void ActionAngle_Get_Var_Dot(ActionAnglePhaseState* state, ResonanceData* restri
 	(*state).dLdot  = 0. ;
 	(*state).dXdot  = -n1 * p1.dY;
 	H1_Inner_Derivs(derivsIn,jacobianIn,&p1,rIn ,mu1, n1,  e1, t);
-	H1_Outer_Derivs(derivsOut,jacobianOut,&p1,rOut,mu2,n1,n2,e2,varpi2,t);
+	H1_Outer_Derivs(derivsOut,jacobianOut,&p1,rOut,mu2,n1,n2,e2,lambda2,varpi2,t);
 	
 	double vardot[4];
 	const double var[4] = {(p1.dl),(p1.dY),(p1.dL),(p1.dX)};
@@ -433,7 +430,7 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 
 }
 
-void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, ResonanceData* restrict rOut ,const double mu2, const double n1,const double n2, const double e2,const double varpi2, const double t){
+void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, ResonanceData* restrict rOut ,const double mu2, const double n1,const double n2, const double e2,const double lambda2,const double varpi2, const double t){
 
 	const int NresOut = rOut->Nres;
 
@@ -461,7 +458,7 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 	// Zero-th order resonance effects
 
 	if (rOut->IncludeZeroth){
-		double psi =  l0 - Dn2 * t  ;
+		double psi =  l0 - Dn2 * t - lambda2 ;
 		double rsq = 1 + alpha*alpha - 2 * alpha * cos(psi);
 		double r = sqrt(rsq);
 	
@@ -479,7 +476,7 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 
 		coeff = *( rOut->ResonanceCoefficients + ( MAX_ORDER + 1 )*i + p );
 
-		theta = j * Dn2 * t + (o-j) * l0 + (p-1) * g0 + (o-p) * (varpi2 + n1 * t);
+		theta = j * (Dn2 * t + lambda2) + (o-j) * l0 + (p-1) * g0 + (o-p) * (varpi2 + n1 * t);
 		costheta=cos(theta);
 		sintheta=sin(theta);
 		
