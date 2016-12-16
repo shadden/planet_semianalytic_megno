@@ -57,6 +57,7 @@ class SimulationParameters(Structure):
 				("n2",c_double),
 				("e1",c_double),
 				("e2",c_double),
+				("lambda2",c_double),
 				("varpi2",c_double)]
 class MEGNO_Auxilary_Variables(Structure):
 	_fields_ = [("W",c_double),
@@ -90,7 +91,7 @@ class libwrapper(object):
 		self._ActionAnglePhaseStateInitialize.restype = None
 
 		self._InitializeActionAngleSimulation = self.lib.InitializeActionAngleSimulation
-		self._InitializeActionAngleSimulation.argtypes = [POINTER(ActionAngleSimulation),c_int,c_int,p1dInt,c_int,c_int,p1dInt] + [c_double for i in range(12)]
+		self._InitializeActionAngleSimulation.argtypes = [POINTER(ActionAngleSimulation),c_int,c_int,p1dInt,c_int,c_int,p1dInt] + [c_double for i in range(13)]
 		self._InitializeActionAngleSimulation.restype = None
 
 		self._SimulationStep = self.lib.SimulationStep
@@ -127,8 +128,9 @@ class libwrapper(object):
 		sim = ActionAngleSimulation()
 		e1=0
 		e2=0
+		lambda2=0
 		varpi2=0
-		self._InitializeActionAngleSimulation(pointer(sim),Nres1,arrIn,Nres2,arrOut,m1,m2,n1,n2,e1,e2,varpi2,L0,l0,X0,Y0,dt)
+		self._InitializeActionAngleSimulation(pointer(sim),Nres1,arrIn,Nres2,arrOut,m1,m2,n1,n2,e1,e2,lambda2,varpi2,L0,l0,X0,Y0,dt)
 		return sim
 
 
@@ -154,8 +156,9 @@ class libwrapper(object):
 		L0,l0,X0,Y0 = 2.0,0.,0.0,0.0
 		e1=0
 		e2=0
+		lambda2=0		
 		varpi2=0
-		self._InitializeActionAngleSimulation(pointer(sim),Nres1,zflagIn,arrIn,Nres2,zflagOut,arrOut,m1,m2,n1,n2,e1,e2,varpi2,L0,l0,X0,Y0,dt)
+		self._InitializeActionAngleSimulation(pointer(sim),Nres1,zflagIn,arrIn,Nres2,zflagOut,arrOut,m1,m2,n1,n2,e1,e2,lambda2,varpi2,L0,l0,X0,Y0,dt)
 		try:
 			self._IntegrateSimulation(pointer(sim),tFin)
 			return sim.megno.megno
@@ -164,7 +167,7 @@ class libwrapper(object):
 			return -1.
 
 			
-	def MEGNO_Integration_Analytic_Full(self,m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,Include0thIn,Include0thOut,resonances1,resonances2,dt,tFin):
+	def MEGNO_Integration_Analytic_Full(self,m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,Include0thIn,Include0thOut,resonances1,resonances2,dt,tFin):
 		Nres1 = resonances1.shape[0];
 		Nres2 = resonances2.shape[0];
 
@@ -184,8 +187,8 @@ class libwrapper(object):
 		varpi2=w2-w1
 		varpiTp=wtp-w1
 		
-		L0,l0,X0,Y0 = 2.0,0.,np.sqrt(2.)*etp*np.cos(varpiTp),np.sqrt(2.)*etp*np.sin(varpiTp)
-		self._InitializeActionAngleSimulation(pointer(sim),Nres1,zflagIn,arrIn,Nres2,zflagOut,arrOut,m1,m2,n1,n2,e1,e2,varpi2,L0,l0,X0,Y0,dt)
+		L0,l0,X0,Y0 = 2.0,lambdatp,np.sqrt(2.)*etp*np.cos(varpiTp),np.sqrt(2.)*etp*np.sin(-1*varpiTp)
+		self._InitializeActionAngleSimulation(pointer(sim),Nres1,zflagIn,arrIn,Nres2,zflagOut,arrOut,m1,m2,n1,n2,e1,e2,lambda2,varpi2,L0,l0,X0,Y0,dt)
 		try:
 			self._IntegrateSimulation(pointer(sim),tFin)
 			return sim.megno.megno
@@ -198,17 +201,23 @@ if False:#__name__=="__main__":
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
-	res1=np.array([[7,2,0]])
-	res2=np.array([[5,1,1]])
-
+	res1=np.array([[3,1,0]])
+	res2=np.array([[3,1,1]])
+	
+	dw = 1.74532925199
+	
 	m1=1.e-5
-	m2=0*1.e-5
-	e1=e2=0
-	varpi2=0
+	m2=1.e-5
+	e0=e1=e2=0.04
+
+	lambda2= 2 * dw
+	varpi2= 2 * dw
+	
 	L0=2
-	Y0=l0=0
-	e0 = 0.01
-	X0 = np.sqrt(2) * e0
+
+	l0= dw
+	X0 = np.sqrt(2) * e0 * np.cos( dw )
+	Y0 = np.sqrt(2) * e0 * np.sin( dw )
 
 
 	
@@ -290,31 +299,36 @@ if __name__=="__main__":
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
-	Ngrid=200
-	n10 =15./13.
-	n20 =15./17.
-	res1=np.array([[15,2,0],[7,1,0],[8,1,0]])
-	res2=np.array([[17,2,2],[9,1,1],[8,1,1]])
+	Ngrid=15
+	n10 =1.5
+	n20 =2./3.
 
+	res1=np.array([[3,1,0],[3,1,1]])
+	res2=np.array([[3,1,0],[3,1,1]])
+	
+	dw = 1.74532925199
+	
 	m1=1.e-5
 	m2=1.e-5
-	e1=e2=0
-	varpi2=0
-	L0=2
-	X0=Y0=l0=0
+	e0=e1=e2=0.04
 
-	dt=2.*np.pi / 30.
+	lambda2= 2 * dw
+	varpi2= 2 * dw
+	
+
+	dt=2.*np.pi / 20.
 	
 	pars=[]
-	for delta2 in np.linspace(+0.005,-0.005,Ngrid):
-		for delta1 in np.linspace(-0.005,0.005,Ngrid):
+	for delta2 in np.linspace(+0.02,-0.02,Ngrid):
+		for delta1 in np.linspace(-0.02,0.02,Ngrid):
 			n1 = n10 * (1+delta1)
 			n2 = n20 / (1+delta2)
 			pars.append((n1,n2))
-	
+
+# 	def MEGNO_Integration_Analytic_Full(self,m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,Include0thIn,Include0thOut,resonances1,resonances2,dt,tFin):
 	def f(x):
 		n1,n2=x
-		meg=w.MEGNO_Integration_Analytic(n1,n2,m1,m2,True,True,res1,res2,dt,2*np.pi*3e3)
+		meg=w.MEGNO_Integration_Analytic_Full(m1,m2,n1,n2,e1,e2,e0,0.,varpi2,dw,lambda2,dw,True,True,res1,res2,dt,2*np.pi*3e3)
 		return meg
 	
 	from rebound.interruptible_pool import InterruptiblePool
