@@ -23,6 +23,7 @@ double FirstOrderI0O1(int k,double a);
 double SecondOrderI2O0(int k,double a);
 double SecondOrderI1O1(int k,double a);
 double SecondOrderI0O2(int k,double a);
+double GeneralOrderCoefficient(int res_j, int order, int epower,double a);
 
 int binomialCoeff(int n, int k)
 {
@@ -60,14 +61,10 @@ void AddResonance(ResonanceData* r, int res_j, int order, int epower,double a){
 
 	double coeff;
 
-	// Only resonances up to MAX_ORDER supported currently
+	// Only resonances up to MAX_ORDER allowed
 	assert(order<= MAX_ORDER);
 
-	if(order==1){
-		coeff = FirstOrder(res_j,epower,a);
-	}else{
-		coeff = SecondOrder(res_j,epower,a);
-	}
+	coeff=GeneralOrderCoefficient(res_j,order,epower,a);
 
 	r->Nres +=1;
 
