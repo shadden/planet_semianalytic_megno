@@ -11,6 +11,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 #include "Resonances.h"
 
@@ -22,6 +23,23 @@ double FirstOrderI0O1(int k,double a);
 double SecondOrderI2O0(int k,double a);
 double SecondOrderI1O1(int k,double a);
 double SecondOrderI0O2(int k,double a);
+
+int binomialCoeff(int n, int k)
+{
+  // Base Cases
+  if (k==0 || k==n)
+    return 1;
+ 
+  // Recur
+  return  binomialCoeff(n-1, k-1) + binomialCoeff(n-1, k);
+}
+int factorial(int f)
+{
+ 	assert(f>=0);
+    if ( f == 0 ) 
+        return 1;
+    return(f * factorial(f - 1));
+}
 
 
 void initialize_ResonanceData( ResonanceData * r,int inclue0th){
@@ -42,7 +60,7 @@ void AddResonance(ResonanceData* r, int res_j, int order, int epower,double a){
 
 	double coeff;
 
-	// Only resonances up to 2nd order supported currently
+	// Only resonances up to MAX_ORDER supported currently
 	assert(order<= MAX_ORDER);
 
 	if(order==1){
@@ -107,6 +125,73 @@ double SecondOrderI1O1(int k,double a) {
 double SecondOrderI0O2(int k,double a) {
 	return (0.25 - (7*k)/8. + k*k/2.)*laplace(0.5,-2 + k,0,a) + (-0.25 + k/2.)*laplace(0.5,-2 + k,1,a) + laplace(0.5,-2 + k,2,a)/8.;
 }
+
+
+
+
+// Page 247 of M&D '99
+
+// Leading order component of M & D Equation 6.38
+double NCOd0(int a, int b, int c){
+	if(c == 0) return 1.0;
+	if(c==1) return b - 0.5 * a;
+	// Else
+	double cc = (double) c;
+	double nc1,nc2;
+	nc1 = NCOd0(a, b+1,c-1);
+	nc2 = NCOd0(a, b+2,c-2);
+	return 0.25 * (2 * (2*b - a) * nc1 + (b - a) * nc2 ) / cc;
+}
+double NewcombOperator(int a, int b, int c,int d){
+	assert(c==0 || d==0);
+	if (d==0){
+		return NCOd0(a,b,c);
+	}
+	else{
+		return NCOd0(a,-b,d);
+	}
+}
+double HansenCoefficient(int a, int b, int c){
+	int alpha =  c-b > 0 ? c-b:0;
+	int beta =  b-c > 0 ? b-c:0;
+	return NewcombOperator(a,b,alpha,beta);
+}
+double GeneralOrderCoefficient(int res_j, int order, int epower,double a){
+
+	int j[7];
+	j[0]=0; // ignore to match M&D indexing
+	j[1] = res_j;
+	j[2] = order - res_j ;
+	j[3] = epower - order;
+	j[4] = -1 * epower;
+	j[5] = 0;
+	j[6] = 0; 
+	int q = j[4];
+	int q1 = -1 * j[3];
+	int Nmax = order;
+	
+	double coeff =0;
+	for (int l=0; l<= Nmax; l++){
+	int sgn = l%2 ? -1:1;
+	double fact = (double) factorial(l);
+	double sum = 0;
+	for (int k=0; k<= l; k++){
+		double ncIn;
+		double ncOut;
+		int sgn2 = k%2 ? -1:1;
+		int binom = sgn2 * binomialCoeff(l, k);
+		int jj = j[2] + q;
+		if (jj<0) jj=-1*jj;
+		ncIn = HansenCoefficient(k,-j[2]-j[4],-j[2]);
+		ncOut = HansenCoefficient(-1-k,j[1]+j[3],j[1]);
+		sum += binom * ncIn*ncOut* laplace(0.5,jj,l,a);
+	}
+	coeff += sgn * sum / fact;
+	}
+	return coeff;
+
+}
+
 
 
 /* Code due to Jack Wisdom */
