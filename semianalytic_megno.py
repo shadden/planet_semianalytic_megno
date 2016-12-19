@@ -120,29 +120,12 @@ class libwrapper(object):
 
 
 
-	def Setup_Integration_Analytic(self,n1,n2,m1,m2,resonances1,resonances2,dt,L0,l0,X0,Y0):
-		Nres1 = resonances1.shape[0];
-		Nres2 = resonances2.shape[0];
-		arrIn=resonances1.astype(c_int).reshape(-1)
-		arrOut=resonances2.astype(c_int).reshape(-1)
-		sim = ActionAngleSimulation()
-		e1=0
-		e2=0
-		lambda2=0
-		varpi2=0
-		self._InitializeActionAngleSimulation(pointer(sim),Nres1,arrIn,Nres2,arrOut,m1,m2,n1,n2,e1,e2,lambda2,varpi2,L0,l0,X0,Y0,dt)
-		return sim
-
-
-
-	def MEGNO_Integration_Analytic(self,n1,n2,m1,m2,Include0thIn,Include0thOut,resonances1,resonances2,dt,tFin):
+	def Setup_Integration_Analytic(self,m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,Include0thIn,Include0thOut,resonances1,resonances2,dt,tFin):
 		Nres1 = resonances1.shape[0];
 		Nres2 = resonances2.shape[0];
 
 		arrIn=resonances1.astype(c_int).reshape(-1)
 		arrOut=resonances2.astype(c_int).reshape(-1)
-		
-		sim = ActionAngleSimulation()
 
 		if Include0thIn:
 			zflagIn = 1
@@ -152,19 +135,19 @@ class libwrapper(object):
 			zflagOut = 1
 		else:
 			zflagOut= 0
+
+
+		sim = ActionAngleSimulation()
 		
-		L0,l0,X0,Y0 = 2.0,0.,0.0,0.0
-		e1=0
-		e2=0
-		lambda2=0		
-		varpi2=0
+		varpi2=w2-w1
+		varpiTp=wtp-w1
+
+		L0,l0,X0,Y0 = 2.0,lambdatp,np.sqrt(2.)*etp*np.cos(varpiTp),np.sqrt(2.)*etp*np.sin(-1*varpiTp)
+
 		self._InitializeActionAngleSimulation(pointer(sim),Nres1,zflagIn,arrIn,Nres2,zflagOut,arrOut,m1,m2,n1,n2,e1,e2,lambda2,varpi2,L0,l0,X0,Y0,dt)
-		try:
-			self._IntegrateSimulation(pointer(sim),tFin)
-			return sim.megno.megno
-		except:
-			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
-			return -1.
+
+		return sim
+
 
 			
 	def MEGNO_Integration_Analytic_Full(self,m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,Include0thIn,Include0thOut,resonances1,resonances2,dt,tFin):
@@ -196,40 +179,39 @@ class libwrapper(object):
 			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
 			return -1.
 
-if False:#__name__=="__main__":
+if __name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
-	res1=np.array([[3,1,0]])
-	res2=np.array([[3,1,1]])
+	res1= np.array([[3,1,0]]) #np.array([[3,1,0],[3,1,1],[6,2,0],[6,2,1],[6,2,2]])
+	res2=np.array([[3,1,0],[3,1,1],[6,2,0],[6,2,1],[6,2,2]])
 	
-	dw = 1.74532925199
-	
-	m1=1.e-5
-	m2=1.e-5
-	e0=e1=e2=0.04
-
-	lambda2= 2 * dw
-	varpi2= 2 * dw
-	
-	L0=2
-
-	l0= dw
-	X0 = np.sqrt(2) * e0 * np.cos( dw )
-	Y0 = np.sqrt(2) * e0 * np.sin( dw )
-
 
 	
-	delta1 = -0.0005;
-	delta2 = 0.01;
-	n1 = 7. / 5. * (1+delta1)
+	m1=0.e-5
+	m2=3.e-6
+
+	e1=0.0
+	e2=0.04
+	w1=w2=0.
+	lambda2= 0.
+
+	etp=0.02
+	lambdatp=3.5
+	wtp=2.
+
+
+	
+	delta1 = -0.001;
+	delta2 = 0.005;
+	n1 = 3. / 2. * (1+delta1)
 	n2 = 2. / 3. / (1+delta2)
 
-
+	
 
 	dt=2.*np.pi / 50.
-	tFin = 2*np.pi * 300. * 10 * 2
+	tFin = 2*np.pi * 1500. *2   
 	Nsteps = int( tFin / dt )
 	Ndump = 3*20 * 10 
 	
@@ -242,16 +224,15 @@ if False:#__name__=="__main__":
 		sim.exit_max_distance = 3.
 		sim.dt = dt / 2. / np.pi
 		sim.add(m=1.0);
-		sim.add(m=m1,id=1,a=n1**(-2./3.),theta=0);
-		sim.add(m=m2,id=2,a=n2**(-2./3.),theta=0);
-		sim.add(m=0.,id=3,a=1.,e=e0,pomega=0,theta=0);
+		sim.add(m=m1,id=1,a=n1**(-2./3.),e=e1,l=0);
+		sim.add(m=m2,id=2,a=n2**(-2./3.),e=e2,l=lambda2);
+		sim.add(m=0.,id=3,a=1.,e=etp,pomega=wtp,l=lambdatp);
 		sim.move_to_com()
 		return sim
 
 
-	
 
-	sim = w.Setup_Integration_Analytic(n1,n2,m1,m2,res1,res2,dt,L0,l0,X0,Y0)
+	sim = w.Setup_Integration_Analytic(m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,True,True,res1,res2,dt,tFin)
 	simNbody = SimulationSetup()
 		
 	
@@ -294,7 +275,7 @@ if False:#__name__=="__main__":
 	
 
 	
-if __name__=="__main__":
+if False: #__name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()
