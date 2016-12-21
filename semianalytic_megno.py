@@ -21,6 +21,10 @@ p1dInt = get_ctype_ptr(c_int,1)
 # 	double* ResonanceCoefficients;
 # } ResonanceData;
 
+# 	double alphaIn,alphaOut;
+# 	double fSecIn,gSecIn;
+# 	double fSecOut,gSecOut;
+
 class ResonanceData(Structure):
 	_fields_ = [("Nres",c_int),("IncludeZeroth",c_int),
 				("MaxOrder",c_int),
@@ -58,7 +62,14 @@ class SimulationParameters(Structure):
 				("e1",c_double),
 				("e2",c_double),
 				("lambda2",c_double),
-				("varpi2",c_double)]
+				("varpi2",c_double),
+				("alphaIn",c_double),
+				("alphaOut",c_double),
+				("fSecIn",c_double),
+				("gSecIn",c_double),
+				("fSecOut",c_double),
+				("gSecOut",c_double)
+				]
 class MEGNO_Auxilary_Variables(Structure):
 	_fields_ = [("W",c_double),
 				("Y",c_double),
@@ -110,6 +121,22 @@ class libwrapper(object):
 		self._mpow = self.lib.mpow
 		self._mpow.argtypes = [c_double,c_int]
 		self._mpow.restype = c_double
+		
+		self._secularF2 = self.lib.secularF2
+		self._secularF2.argtypes = [c_double]
+		self._secularF2.restype = c_double
+
+		self._secularF10 = self.lib.secularF10
+		self._secularF10.argtypes = [c_double]
+		self._secularF10.restype = c_double
+
+	def secular_coefficients(self,alpha):
+		assert alpha < 1.
+		try:
+			return self._secularF2(alpha),self._secularF10(alpha)
+		except:
+			print "Failed on input", alpha
+
 		
 	def MEGNO_Integration(self,tfin,dt,period,ecc,mu1,mu2,Omega2):
 		try:
@@ -179,154 +206,103 @@ class libwrapper(object):
 			print "FAILED ON INPUT: ",n1,n2,mu1,mu2,resonances1,resonances2,tFin
 			return -1.
 
+
 if __name__=="__main__":
 	
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
-	res1= np.array([[3,1,0]]) #np.array([[3,1,0],[3,1,1],[6,2,0],[6,2,1],[6,2,2]])
-	res2=np.array([[3,1,0],[3,1,1],[6,2,0],[6,2,1],[6,2,2]])
-	
+# 	res1= np.array([[3,1,0],[3,1,1]]) #np.array([[3,1,0],[3,1,1],[6,2,0],[6,2,1],[6,2,2]])
+# 	res2=np.array([[3,1,0],[3,1,1],[6,2,0],[6,2,1],[6,2,2]]) #
+	res1 =np.array([])	
+	res2 =np.array([])	
 
 	
-	m1=0.e-5
-	m2=3.e-6
+	m1=0.e-6
+	m2=1.e-5
 
 	e1=0.0
-	e2=0.04
-	w1=w2=0.
+	e2=0.05
+	w1=0.
+	w2=-np.pi / 4.
 	lambda2= 0.
 
 	etp=0.02
-	lambdatp=3.5
-	wtp=2.
+	lambdatp=0
+	wtp=0
 
 
-	
+
 	delta1 = -0.001;
-	delta2 = 0.005;
+	delta2 = 0.01;
 	n1 = 3. / 2. * (1+delta1)
-	n2 = 2. / 3. / (1+delta2)
+	n2 =  1/2.15  #2. / 3. / (1+delta2)
 
-	
+	dt=2.*np.pi / 20.
+	tFin = 2*np.pi * 1500. * 150   
 
-	dt=2.*np.pi / 50.
-	tFin = 2*np.pi * 1500. *2   
 	Nsteps = int( tFin / dt )
-	Ndump = 3*20 * 10 
-	
-	import rebound
-	def SimulationSetup():
-		sim = rebound.Simulation()
-		sim.units= ('yr','AU','Msun')
-		sim.integrator = "whfast"
-		sim.integrator_whfast_safe_mode = 0
-		sim.exit_max_distance = 3.
-		sim.dt = dt / 2. / np.pi
-		sim.add(m=1.0);
-		sim.add(m=m1,id=1,a=n1**(-2./3.),e=e1,l=0);
-		sim.add(m=m2,id=2,a=n2**(-2./3.),e=e2,l=lambda2);
-		sim.add(m=0.,id=3,a=1.,e=etp,pomega=wtp,l=lambdatp);
-		sim.move_to_com()
-		return sim
-
+	Npts = 2**10
+	Ndump = int(np.floor(Nsteps / Npts))
 
 
 	sim = w.Setup_Integration_Analytic(m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,True,True,res1,res2,dt,tFin)
-	simNbody = SimulationSetup()
-		
-	
-	Npts=int(np.floor(Nsteps/Ndump)) 
-	data = np.zeros((4,Npts))
-	NBdata = np.zeros((3,Npts))
-	j=0	
-	for i in range(Nsteps):
-		if i%Ndump==0 and j<Npts:
-
-			data[0,j] = i*dt
-			data[1,j] = sim.state.L
-			data[2,j] = np.sqrt(sim.state.X*sim.state.X + sim.state.Y*sim.state.Y) / np.sqrt(2)
-			data[3,j] = sim.megno.megno
-			orbs=simNbody.calculate_orbits()
-			NBdata[0,j] = i*dt
-			NBdata[1,j] =orbs[-1].a
-			NBdata[2,j] =orbs[-1].e
-			simNbody.integrate(i*dt/2./np.pi,exact_finish_time=0)
-			j=j+1
-			
-
-
-			
-		w._SimulationStep(pointer(sim))
-
-	fig,ax = plt.subplots(3,1,sharex=True)	
-	a0 = NBdata[1,0]
-	sma = a0 * 0.25 * (data[1])**2
-	ax[0].plot(NBdata[0],NBdata[1],'k-')
-	ax[0].plot(data[0],sma,'r-')
+	w._SimulationStep(pointer(sim))
+	print sim.state.X,sim.state.Y
+# 	import rebound
+# 	def SimulationSetup():
+# 		sim = rebound.Simulation()
+# 		sim.units= ('yr','AU','Msun')
+# 		sim.integrator = "whfast"
+# 		sim.integrator_whfast_safe_mode = 0
+# 		sim.exit_max_distance = 3.
+# 		sim.dt = dt / 2. / np.pi
+# 		sim.add(m=1.0);
+# 		sim.add(m=m1,id=1,a=n1**(-2./3.),e=e1,l=0);
+# 		sim.add(m=m2,id=2,a=n2**(-2./3.),e=e2,pomega=w2,l=lambda2);
+# 		sim.add(m=0.,id=3,a=1.,e=etp,pomega=wtp,l=lambdatp);
+# 		sim.move_to_com()
+# 		return sim
 # 
-	ax[1].plot(NBdata[0],NBdata[2],'k-')
-	ax[1].plot(data[0],data[2],'r-')
 # 
-	ax[2].plot(data[0],data[3],'r-')
-	ax[2].set_ylim((1.5,3.))
-
-	plt.show()
-	
-
-	
-if False: #__name__=="__main__":
-	
-	w = libwrapper()
-	sim=ActionAngleSimulation()
-
-	Ngrid=15
-	n10 =1.5
-	n20 =2./3.
-
-	res1=np.array([[3,1,0],[3,1,1]])
-	res2=np.array([[3,1,0],[3,1,1]])
-	
-	dw = 1.74532925199
-	
-	m1=1.e-5
-	m2=1.e-5
-	e0=e1=e2=0.04
-
-	lambda2= 2 * dw
-	varpi2= 2 * dw
-	
-
-	dt=2.*np.pi / 20.
-	
-	pars=[]
-	for delta2 in np.linspace(+0.02,-0.02,Ngrid):
-		for delta1 in np.linspace(-0.02,0.02,Ngrid):
-			n1 = n10 * (1+delta1)
-			n2 = n20 / (1+delta2)
-			pars.append((n1,n2))
-
-# 	def MEGNO_Integration_Analytic_Full(self,m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,Include0thIn,Include0thOut,resonances1,resonances2,dt,tFin):
-	def f(x):
-		n1,n2=x
-		meg=w.MEGNO_Integration_Analytic_Full(m1,m2,n1,n2,e1,e2,e0,0.,varpi2,dw,lambda2,dw,True,True,res1,res2,dt,2*np.pi*3e3)
-		return meg
-	
-	from rebound.interruptible_pool import InterruptiblePool
-	pool = InterruptiblePool()
-	results=pool.map(f,pars)
-	results2d = np.array(results).reshape(Ngrid,Ngrid)
-
-	fig = plt.figure(figsize=(7,5))
-	ax = plt.subplot(111)
-	delta=0.01
-	extent = [ n10 * (1-delta), n10 * (1+delta), n20 / (1+delta), n20 / (1-delta)]
-	ax.set_xlim(extent[0],extent[1])
-	ax.set_xlabel("inner freq $n1$")
-	ax.set_ylim(extent[2],extent[3])
-	ax.set_ylabel("outer freq $n2$")
-	im = ax.imshow(results2d, interpolation="none", vmin=1.9, vmax=4, cmap="RdYlGn_r", origin="lower", aspect='auto', extent=extent)
-	cb = plt.colorbar(im, ax=ax)
-	cb.set_label("MEGNO $\\langle Y \\rangle$")
-	plt.show()
+# 
+# 	sim = w.Setup_Integration_Analytic(m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,True,True,res1,res2,dt,tFin)
+# 	simNbody = SimulationSetup()
+# 		
+# 	data = np.zeros((4,Npts))
+# 	NBdata = np.zeros((3,4,Npts))
+# 	j=0	
+# 
+# 	for i in range(Nsteps):
+# 		if i%Ndump==0 and j<Npts:
+# 
+# 			data[0,j] = i*dt
+# 			data[1,j] = sim.state.L
+# 			data[2,j] = np.sqrt(sim.state.X*sim.state.X + sim.state.Y*sim.state.Y) / np.sqrt(2)
+# 			data[3,j] =  i * n1 * dt - np.arctan2(sim.state.Y,sim.state.X) 
+# 	
+# 			orbs=simNbody.calculate_orbits()
+# 			for k in range(3):
+# 				NBdata[k,0,j] = i*dt
+# 				NBdata[k,1,j] =orbs[k].a
+# 				NBdata[k,2,j] =orbs[k].e
+# 				NBdata[k,3,j] =orbs[k].pomega
+# 	
+# 			simNbody.integrate(i*dt/2./np.pi,exact_finish_time=0)
+# 			j=j+1
+# 		w._SimulationStep(pointer(sim))
+# 
+# 	fig,ax = plt.subplots(2,1,figsize=(10,5))
+# 	ax[0].plot(NBdata[2,0],NBdata[2,2]*np.cos(NBdata[2,3]),'k-')
+# 	ax[0].plot(NBdata[2,0],NBdata[2,2]*np.sin(NBdata[2,3]),'r-')	
+# 	ax[0].plot(data[0],data[2]*np.cos(data[3]),'b-')
+# 	ax[0].plot(data[0],data[2]*np.sin(data[3]),'g-')
+# 	for i in range(2):
+# 		if i==0:
+# 			style = '-'
+# 		else:
+# 			style = "--"
+# 		ax[1].plot(NBdata[i,0],NBdata[i,2]*np.cos(NBdata[i,3]),c='k',ls=style)
+# 		ax[1].plot(NBdata[i,0],NBdata[i,2]*np.sin(NBdata[i,3]),c='r',ls=style)	
+# 	plt.show()
 	

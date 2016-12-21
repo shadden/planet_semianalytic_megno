@@ -13,7 +13,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include "Resonances.h"
+#include "shared.h"
+#include "LaplaceCoefficients.h"
 
 double laplace(double s, int i, int j, double a);
 double FirstOrder(int k,int epower,double a);
@@ -86,49 +87,19 @@ void AddResonance(ResonanceData* r, int res_j, int order, int epower,double a){
 	
 }
 
-double FirstOrder(int k,int epower,double a){
-	if(epower==1){
-		return FirstOrderI1O0(k,a);
-	} else {
-		return FirstOrderI0O1(k,a);
-	}
-}
-
-double SecondOrder(int k,int epower,double a){
-	switch(epower){
-		case 2:
-			return SecondOrderI2O0(k,a);
-		case 1:
-			return SecondOrderI1O1(k,a);
-		default:
-			return SecondOrderI0O2(k,a);
-	}
-}
-
-double FirstOrderI1O0(int k,double a) {
-	return -(k*laplace(0.5,k,0,a)) - laplace(0.5,k,1,a)/2.;
-}
-
-double FirstOrderI0O1(int k,double a) {
-	return (-0.5 + k)*laplace(0.5,-1 + k,0,a) + laplace(0.5,-1 + k,1,a)/2.;
-}
-
-double SecondOrderI2O0(int k,double a) {
-	return ((-5*k)/8. + k*k/2.)*laplace(0.5,k,0,a) + (-0.25 + k/2.)*laplace(0.5,k,1,a) + laplace(0.5,k,2,a)/8.;
-}
-double SecondOrderI1O1(int k,double a) {
-	return (-0.5 + (3*k)/2. - k*k)*laplace(0.5,-1 + k,0,a) + (0.5 - k)*laplace(0.5,-1 + k,1,a) - laplace(0.5,-1 + k,2,a)/4.;
-}
-double SecondOrderI0O2(int k,double a) {
-	return (0.25 - (7*k)/8. + k*k/2.)*laplace(0.5,-2 + k,0,a) + (-0.25 + k/2.)*laplace(0.5,-2 + k,1,a) + laplace(0.5,-2 + k,2,a)/8.;
-}
-
-
-
+double secularF2(double alpha){
+	assert(alpha<1);
+	return 0.25 * laplace(0.5,0,1,alpha) + 0.125 * laplace(0.5,0,2,alpha);
+};
+double secularF10(double alpha){
+		assert(alpha<1);
+		return 0.5 * laplace(0.5,1,0,alpha) - 0.5 * laplace(0.5,1,1,alpha) - 0.25 * laplace(0.5,1,2,alpha);
+};
 
 // Page 247 of M&D '99
 
 // Leading order component of M & D Equation 6.38
+
 double NCOd0(int a, int b, int c){
 	if(c == 0) return 1.0;
 	if(c==1) return b - 0.5 * a;
@@ -153,6 +124,7 @@ double HansenCoefficient(int a, int b, int c){
 	int beta =  b-c > 0 ? b-c:0;
 	return NewcombOperator(a,b,alpha,beta);
 }
+
 double GeneralOrderCoefficient(int res_j, int order, int epower,double a){
 
 	int j[7];
@@ -267,5 +239,47 @@ double laplace(double s, int i, int j, double a)
     sum *= 2.0 * pow(a, ((double) 2*q0 + i - 2));
 
   return(sum);
+}
+
+
+
+
+//	**** DEPRICATED **** //
+
+double FirstOrder(int k,int epower,double a){
+	if(epower==1){
+		return FirstOrderI1O0(k,a);
+	} else {
+		return FirstOrderI0O1(k,a);
+	}
+}
+
+double SecondOrder(int k,int epower,double a){
+	switch(epower){
+		case 2:
+			return SecondOrderI2O0(k,a);
+		case 1:
+			return SecondOrderI1O1(k,a);
+		default:
+			return SecondOrderI0O2(k,a);
+	}
+}
+
+double FirstOrderI1O0(int k,double a) {
+	return -(k*laplace(0.5,k,0,a)) - laplace(0.5,k,1,a)/2.;
+}
+
+double FirstOrderI0O1(int k,double a) {
+	return (-0.5 + k)*laplace(0.5,-1 + k,0,a) + laplace(0.5,-1 + k,1,a)/2.;
+}
+
+double SecondOrderI2O0(int k,double a) {
+	return ((-5*k)/8. + k*k/2.)*laplace(0.5,k,0,a) + (-0.25 + k/2.)*laplace(0.5,k,1,a) + laplace(0.5,k,2,a)/8.;
+}
+double SecondOrderI1O1(int k,double a) {
+	return (-0.5 + (3*k)/2. - k*k)*laplace(0.5,-1 + k,0,a) + (0.5 - k)*laplace(0.5,-1 + k,1,a) - laplace(0.5,-1 + k,2,a)/4.;
+}
+double SecondOrderI0O2(int k,double a) {
+	return (0.25 - (7*k)/8. + k*k/2.)*laplace(0.5,-2 + k,0,a) + (-0.25 + k/2.)*laplace(0.5,-2 + k,1,a) + laplace(0.5,-2 + k,2,a)/8.;
 }
 

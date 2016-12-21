@@ -6,13 +6,15 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include "Resonances.h"
+#include "shared.h"
+#include "LaplaceCoefficients.h"
 #include "ActionAngleIntegrate.h"
 
 
 #define RT2 1.414213562373095
 #define RT2INV 0.7071067811865475
 #define INDX(ROW,COL) 4 * ROW + COL
+
 
 double const symplecticJ[4][4] = {{  0,  0,  1,  0},\
 								  {  0,  0,  0,  1},\
@@ -121,14 +123,16 @@ void intialize_megno_vars( MEGNO_Auxilary_Variables* megno){
 void SimulationStep(ActionAngleSimulation* restrict sim){
 		const double dt = sim->dt;
 		const double t = sim->t;
-		ActionAngle_H0_Advance( &(sim->state) , &(sim->parameters), 0.5 * (sim->dt));
+		ActionAngle_H0_Advance( &(sim->state) , &(sim->parameters), t, 0.5 * (sim->dt));
 		ActionAngle_H1_Advance_StormerVerlet(&(sim->state), &(sim->rIn) , &(sim->rOut) , &(sim->parameters), t ,dt);
-		ActionAngle_H0_Advance( &(sim->state) , &(sim->parameters), 0.5 * dt);
+		ActionAngle_H0_Advance( &(sim->state) , &(sim->parameters), t + 0.5 * dt ,0.5 * dt);
 		ActionAngle_Get_Var_Dot(&(sim->state), &(sim->rIn) , &(sim->rOut) , &(sim->parameters), t+dt);
 		ActionAngle_update_megno_eqations(&(sim->state) , &(sim->megno) ,t+dt,dt);
 		sim->t +=dt;
 
 }
+
+
 void initialize_pars(SimulationParameters* pars,double mu1,double mu2,double n1,double n2,double e1,double e2,double lambda2,double varpi2){
 	pars->mu1=mu1;
 	pars->mu2=mu2;
@@ -138,6 +142,16 @@ void initialize_pars(SimulationParameters* pars,double mu1,double mu2,double n1,
 	pars->e2=e2;
 	pars->lambda2=lambda2;
 	pars->varpi2=varpi2;
+	
+	pars->alphaIn=pow(n1,-2./3.);
+ 	pars->alphaOut = pow(n2,2./3.);
+ 	
+ 	// secular coefficients
+ 	pars->fSecIn = secularF2(pars->alphaIn);
+ 	pars->gSecIn = secularF10(pars->alphaIn);
+ 	pars->fSecOut = secularF2(pars->alphaOut);
+ 	pars->gSecOut = secularF10(pars->alphaOut);
+
 }
 void ActionAnglePhaseStateInitialize(ActionAnglePhaseState* restrict Z, double L0, double l0, double X0, double Y0){
 	Z->L = L0;
@@ -164,20 +178,64 @@ void ActionAnglePhaseStateInitialize(ActionAnglePhaseState* restrict Z, double L
 
 
 }
-void ActionAngle_H0_Advance( ActionAnglePhaseState* restrict Z ,SimulationParameters* restrict pars,const double dt){
+
+void ActionAngle_H0_Advance( ActionAnglePhaseState* restrict Z ,SimulationParameters* restrict pars, const double t,const double dt){
 		
 	const ActionAnglePhaseState state = *Z;
 	const double n1 = pars->n1;
+	double const varpi2 = pars->varpi2;
+
+	double const fIn =pars->fSecIn;
+	double const gIn =pars->gSecIn;
+
+	double const fOut =pars->fSecOut;
+	double const gOut =pars->gSecOut;
+	
+	double const mu1 =pars->mu1;
+	double const mu2 =pars->mu2;
+	double const alpha2 =pars->alphaOut;
+	
+	double const e1 =pars->e1;
+	double const e2 =pars->e2;
+
 	// Equations
-	const double n1dt = n1 * dt;
+
+	double X_free, Y_free, x_forced, y_forced, w_sec,X_forced, Y_forced;
+	double x1 = sqrt(2.) * e1 * cos(n1*t);
+	double y1 = sqrt(2.) * e1 * sin(n1*t);
+	double x2 = sqrt(2.) * e2 * cos(n1 * t - varpi2);
+	double y2 = sqrt(2.) * e2 * sin(n1 * t - varpi2);
+	
+	
+	// NOTE: this is gamma_dot = -1 * pomega_dot
+	w_sec = -2 * alpha2 * mu2 * fOut - 2 * mu1 * fIn;
+
+	
+	x_forced =  ( mu1 * gIn * x1  + alpha2 * mu2 * gOut * x2) / w_sec;
+	y_forced =  ( mu1 * gIn * y1  + alpha2 * mu2 * gOut * y2) / w_sec;
+
+
+	
+	X_free = state.X - x_forced;
+	Y_free = state.Y - y_forced;
+	
+	const double dtheta = (n1+w_sec) * dt;
+	const double n1dt =  (n1) * (dt);
+	const double Sn1dt =  sin(n1dt);
+	const double Cn1dt =  cos(n1dt);
+	const double Sdtheta = sin(dtheta);
+	const double Cdtheta = cos(dtheta);
+
+
 	(*Z).l += dt * ( 8./(state.L*state.L*state.L) - n1 );
-	(*Z).X  = cos(n1dt) * state.X - sin(n1dt) * state.Y;
-	(*Z).Y  = sin(n1dt) * state.X + cos(n1dt) * state.Y;
+	(*Z).X  = Cdtheta * X_free - Sdtheta * Y_free + x_forced * Cn1dt - y_forced * Sn1dt;
+	(*Z).Y  = Sdtheta * X_free + Cdtheta * Y_free + x_forced * Sn1dt + y_forced * Cn1dt;
+	
 
 	// Variationals
 	(*Z).dl += dt *  -24./(state.L*state.L*state.L*state.L) * state.dL ;
-	(*Z).dY  = sin(n1dt) * state.dX + cos(n1dt) * state.dY;
-	(*Z).dX  = cos(n1dt) * state.dX - sin(n1dt) * state.dY;
+	(*Z).dY  = Sdtheta * state.dX + Cdtheta * state.dY;
+	(*Z).dX  = Cdtheta * state.dX - Sdtheta * state.dY;
 
 }
 void ActionAngle_H1_Advance_StormerVerlet(ActionAnglePhaseState* Z, ResonanceData* restrict rIn, ResonanceData* restrict rOut ,SimulationParameters* restrict pars, const double t, const double dt){
@@ -447,6 +505,7 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 	const double Esq = 0.5*(X0*X0 + Y0*Y0);
 	const double E = sqrt(Esq);
 	const double g0 = atan2(Y0,X0);
+		
 
 	double Xdot=0;
 	double Ydot=0;
@@ -465,7 +524,6 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 		Ldot += -2 * alpha * mu2 * ( alpha * sin(psi) / rsq / r -  alpha * sin(psi) );
 		DLdotDl += -2 * alpha * mu2 * ( alpha * cos(psi) / rsq / r - 3 * alpha * alpha * sin(psi) * sin(psi) / rsq / rsq / r - alpha * cos(psi));
 	}
-
 
 	// Add up resonances 
 	for(int i=0; i<NresOut; i++){
