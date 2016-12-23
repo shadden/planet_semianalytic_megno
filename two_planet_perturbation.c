@@ -27,6 +27,7 @@ double MEGNO_Integration(double tfin, double dt, double period, double ecc, doub
 	return megno.megno;
 	
 }
+
 void intialize_particle( PhaseState* particle, double period, double  ecc){
 
 	const double a0 = pow(period*period, 1/3. );
@@ -46,9 +47,10 @@ void intialize_particle( PhaseState* particle, double period, double  ecc){
 	(*particle).dx = 	1.e-15*dvec[0]/sqrt(normsq);
 	(*particle).dy = 	1.e-15*dvec[1]/sqrt(normsq);
 	(*particle).dvx = 1.e-15*dvec[2]/sqrt(normsq);
-	(*particle).dvx = 1.e-15*dvec[3]/sqrt(normsq);
+	(*particle).dvy = 1.e-15*dvec[3]/sqrt(normsq);
 
 }
+
 void two_circular_perturbers_advance(double const mu1, double const mu2, double const Omega2,  PhaseState* restrict particle , double t, double _dt){
 	const PhaseState p1 = *particle;
 	
@@ -106,6 +108,8 @@ void two_circular_perturbers_advance(double const mu1, double const mu2, double 
 	
 
 }
+
+
 void rotaion_advance(  PhaseState* restrict particle , double _dt){
 	const PhaseState p1 = *particle;
 	// eqns
