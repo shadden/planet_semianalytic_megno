@@ -34,3 +34,5 @@ void intialize_simulation( Simulation * sim, double mu1, double mu2,
  double ntp, double lambdatp, double  ecctp, double pomegatp
  );
  void free_simulation( Simulation * simulation );
+ 
+ double IntegrateSimulation(Simulation * sim, const double tFin, const double dt);

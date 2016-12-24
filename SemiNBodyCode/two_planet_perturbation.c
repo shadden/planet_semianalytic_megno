@@ -165,6 +165,35 @@ void initialize_particle_simple( PhaseStateSimple* particle, double n0, double l
 	kepler_2D_advance_simple(particle, dt0);
 }
 
+void intialize_simulation( Simulation * sim, double mu1, double mu2,
+ double n1, double lambda1, double  ecc1, double pomega1,
+ double n2, double lambda2, double  ecc2, double pomega2,
+ double ntp, double lambdatp, double  ecctp, double pomegatp
+ ){
+	sim->mu1=mu1;
+	sim->mu2=mu2;
+
+	// allocate memory
+	sim->test_particle = (PhaseState *) malloc(sizeof(PhaseState));
+	sim->inner_planet = (PhaseStateSimple *) malloc(sizeof(PhaseStateSimple));
+	sim->outer_planet = (PhaseStateSimple *) malloc(sizeof(PhaseStateSimple));
+	sim->megno_aux = (MEGNO_Auxilary_Variables *) malloc(sizeof(MEGNO_Auxilary_Variables));
+ 
+ 	// initialize particles
+ 	initialize_particle(sim->test_particle,ntp,lambdatp,ecctp,pomegatp);
+ 	initialize_particle_simple(sim->inner_planet,n1,lambda1,ecc1,pomega1);
+ 	initialize_particle_simple(sim->outer_planet,n2,lambda2,ecc2,pomega2);
+ 	initialize_megno_vars(sim->megno_aux);
+ 
+}
+
+void free_simulation( Simulation * simulation ){
+ free(simulation->test_particle);
+ free(simulation->inner_planet);
+ free(simulation->outer_planet);
+ free(simulation->megno_aux); 
+}
+
 void update_megno_equations(Simulation * restrict sim , double t, double dt){
 	const PhaseState p1 = *(sim->test_particle);
 	MEGNO_Auxilary_Variables m1 = *(sim->megno_aux);
@@ -262,58 +291,13 @@ void simulation_step(Simulation * sim, double t, double dt){
 	
 }
 
-void intialize_simulation( Simulation * sim, double mu1, double mu2,
- double n1, double lambda1, double  ecc1, double pomega1,
- double n2, double lambda2, double  ecc2, double pomega2,
- double ntp, double lambdatp, double  ecctp, double pomegatp
- ){
-	sim->mu1=mu1;
-	sim->mu2=mu2;
+double IntegrateSimulation(Simulation * sim, const double tFin, const double dt){
+	const int Nstep = (int) ceil( tFin / dt);
 
-	// allocate memory
-	sim->test_particle = (PhaseState *) malloc(sizeof(PhaseState));
-	sim->inner_planet = (PhaseStateSimple *) malloc(sizeof(PhaseStateSimple));
-	sim->outer_planet = (PhaseStateSimple *) malloc(sizeof(PhaseStateSimple));
-	sim->megno_aux = (MEGNO_Auxilary_Variables *) malloc(sizeof(MEGNO_Auxilary_Variables));
- 
- 	// initialize particles
- 	initialize_particle(sim->test_particle,ntp,lambdatp,ecctp,pomegatp);
- 	initialize_particle_simple(sim->inner_planet,n1,lambda1,ecc1,pomega1);
- 	initialize_particle_simple(sim->outer_planet,n2,lambda2,ecc2,pomega2);
- 	initialize_megno_vars(sim->megno_aux);
- 
-}
-void free_simulation( Simulation * simulation ){
- free(simulation->test_particle);
- free(simulation->inner_planet);
- free(simulation->outer_planet);
- free(simulation->megno_aux); 
-}
-
-#if 0
-double MEGNO_Integration(double tfin, double dt, double period, double ecc, double mu1,double mu2, double Omega2){
-
-	int Nstep = (int)(tfin/dt);
-
-	PhaseState planet;
-	intialize_particle(&planet,period,ecc);
-	MEGNO_Auxilary_Variables megno;
-	intialize_megno_vars( &megno);
-
-
-	for(int i=0; i < Nstep; i++){
-	// Both planets 
-		two_circular_perturbers_advance( mu1 , mu2 , Omega2 , &planet , i*dt , dt*0.5 );	
-		interaction_advance(sim, dt*0.5 )
-		kepler_advance(&planet, dt);
-		interaction_advance(sim, dt*0.5 )
-		compute_variational_accs(sim);
-		update_megno_eqations( &planet , &megno ,i*dt + dt, dt);
+	for(int i=0; i<Nstep; i++){
+		simulation_step(sim,i*dt,dt);
 	}
-
-	return megno.megno;
-	
+	return sim->megno_aux->megno;
 }
-#endif
 
 
