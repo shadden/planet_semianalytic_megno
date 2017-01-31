@@ -225,7 +225,7 @@ if __name__=="__main__":
 	e2=0.05
 	w1=0.
 	w2=-np.pi / 4.
-	lambda2= 0.
+	lambda2= w2
 
 	etp=0.02
 	lambdatp=0
@@ -249,6 +249,7 @@ if __name__=="__main__":
 	sim = w.Setup_Integration_Analytic(m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,True,True,res1,res2,dt,tFin)
 	w._SimulationStep(pointer(sim))
 	print sim.state.X,sim.state.Y
+	print sim.parameters.lambda2 ,  sim.parameters.varpi2
 # 	import rebound
 # 	def SimulationSetup():
 # 		sim = rebound.Simulation()
