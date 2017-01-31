@@ -534,7 +534,7 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 
 		coeff = *( rOut->ResonanceCoefficients + ( MAX_ORDER + 1 )*i + p );
 
-		theta = j * (Dn2 * t + lambda2) + (o-j) * l0 + (p-1) * g0 + (o-p) * (varpi2 + n1 * t);
+		theta = j * (Dn2 * t + lambda2) + (o-j) * l0 + (p-1) * g0 + (o-p) * (n1 * t - varpi2);
 		costheta=cos(theta);
 		sintheta=sin(theta);
 		
