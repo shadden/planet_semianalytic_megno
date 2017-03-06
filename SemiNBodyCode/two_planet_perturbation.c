@@ -172,6 +172,7 @@ void intialize_simulation( Simulation * sim, double mu1, double mu2,
  ){
 	sim->mu1=mu1;
 	sim->mu2=mu2;
+	sim->t=0.0;
 
 	// allocate memory
 	sim->test_particle = (PhaseState *) malloc(sizeof(PhaseState));
@@ -301,3 +302,12 @@ double IntegrateSimulation(Simulation * sim, const double tFin, const double dt)
 }
 
 
+void IntegrateSimulationToTime(Simulation * sim, const double tFin, const double dt){
+	const double current_t = sim->t;
+	const int Nstep = (int) ceil( (tFin-current_t) / dt);
+
+	for(int i=0; i<Nstep; i++){
+		simulation_step(sim,i*dt,dt);
+	}
+	sim->t = current_t +  Nstep * dt;
+}

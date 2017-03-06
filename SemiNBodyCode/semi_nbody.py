@@ -43,7 +43,8 @@ class Simulation(Structure):
 				("outer_planet",POINTER(PhaseStateSimple)),
 				("megno_aux",POINTER(MEGNO_Auxilary_Variables)),
 				("mu1",c_double),
-				("mu2",c_double)]
+				("mu2",c_double),
+				("t",c_double)]
 
 
 class libwrapper(object):
@@ -68,6 +69,10 @@ class libwrapper(object):
 		self._IntegrateSimulation.argtypes = [POINTER(Simulation), c_double, c_double]
 		self._IntegrateSimulation.restype = c_double
 
+		self._IntegrateSimulationToTime = self.lib.IntegrateSimulationToTime
+		self._IntegrateSimulationToTime.argtypes = [POINTER(Simulation), c_double, c_double]
+		self._IntegrateSimulationToTime.restype = None
+
 	def run_megno_integration(self,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish,dtfactor=1./30.):
 		# print m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish
 		sim = Simulation()
@@ -77,7 +82,34 @@ class libwrapper(object):
 		dt = dtfactor * shortest_period
 		# print tFinish
 		return self._IntegrateSimulation(psim,tFinish,dt)
+	def setup_integration(self,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish,dtfactor=1./30.):
+		# print m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish
+		sim = Simulation()
+		psim = pointer(sim)	
+		self._initialize_simulation(psim,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp)
+		shortest_period = 2 * np.pi / np.max(np.array([n1,n2,ntp]))
+		dt = dtfactor * shortest_period
 		
+		return psim,dt
+
+def get_orbital_elements(psim):
+	t=psim.contents.t
+	x=psim.contents.test_particle.contents.x
+	x=psim.contents.test_particle.contents.x
+	y=psim.contents.test_particle.contents.y
+	vx=psim.contents.test_particle.contents.vx
+	vy=psim.contents.test_particle.contents.vy
+	
+	rsq = x*x + y*y
+	rinv = 1./np.sqrt(rsq)
+	vsq = vx*vx + vy*vy
+	angmo = x*vy - y*vx
+	sma = 1.0  / (2.0 * rinv - vsq)
+	ecc = np.sqrt( 1.0 - angmo * angmo / sma)
+	ex = angmo * vy - x*rinv
+	ey = -angmo * vx - y*rinv
+	return t,sma,ecc,ex,ey
+			
 		
 #		self._free_simulation(sim)
 
@@ -86,12 +118,12 @@ if __name__=="__main__":
 	w = libwrapper()
 	
 	m1=1.e-5
-	m2=1.e-4
+	m2=3.e-6
 
-	e1=0.0
+	e1=0.06
 	e2=0.06
 	pomega1=0.
-	pomega2=-np.pi / 4.
+	pomega2=np.pi 
 	l1=0
 	l2= 0.
 	
@@ -107,7 +139,13 @@ if __name__=="__main__":
 	n1 = 3. / 2. * (1+delta1)
 	n2 =  2. / 3. / (1+delta2)
 
-	tFin = 2*np.pi*3e3
+	tFin = 2*np.pi*5e4
+	
+	psim,dt=w.setup_integration(m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,1.0,ltp,etp,pomegatp,tFin,dtfactor=1./30.)
+	
+	Npts=200
+	pts = np.zeros((5,Npts))
+	for i,t in enumerate(np.linspace(0,tFin,Npts)):
 
-	meg = w.run_megno_integration(m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,1.0,ltp,etp,pomegatp,tFin,dtfactor=1./30.)
-	print meg
+		w._IntegrateSimulationToTime(psim,t,dt)
+		pts[:,i]=get_orbital_elements(psim)

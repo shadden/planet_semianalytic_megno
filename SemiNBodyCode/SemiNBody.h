@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 
 
 
@@ -21,6 +24,7 @@ typedef struct Simulation {
 	PhaseStateSimple * inner_planet, * outer_planet;
 	MEGNO_Auxilary_Variables * megno_aux;
 	double mu1,mu2;
+	double t;
 } Simulation;
 
 void simulation_step(Simulation * sim, double t, double dt);
