@@ -307,7 +307,7 @@ void IntegrateSimulationToTime(Simulation * sim, const double tFin, const double
 	const int Nstep = (int) ceil( (tFin-current_t) / dt);
 
 	for(int i=0; i<Nstep; i++){
-		simulation_step(sim,i*dt,dt);
+		simulation_step(sim,current_t+i*dt,dt);
 	}
 	sim->t = current_t +  Nstep * dt;
 }
