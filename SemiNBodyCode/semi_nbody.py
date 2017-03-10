@@ -70,11 +70,10 @@ class libwrapper(object):
 		self._IntegrateSimulation.restype = c_double
 
 		self._IntegrateSimulationToTime = self.lib.IntegrateSimulationToTime
-		self._IntegrateSimulationToTime.argtypes = [POINTER(Simulation), c_double, c_double]
+		self._IntegrateSimulationToTime.argtypes = [POINTER(Simulation), c_double,c_double]
 		self._IntegrateSimulationToTime.restype = None
 
 	def run_megno_integration(self,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish,dtfactor=1./30.):
-		# print m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish
 		sim = Simulation()
 		psim = pointer(sim)	
 		self._initialize_simulation(pointer(sim),m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp)
@@ -83,7 +82,6 @@ class libwrapper(object):
 		# print tFinish
 		return self._IntegrateSimulation(psim,tFinish,dt)
 	def setup_integration(self,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish,dtfactor=1./30.):
-		# print m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish
 		sim = Simulation()
 		psim = pointer(sim)	
 		self._initialize_simulation(psim,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp)
@@ -91,6 +89,22 @@ class libwrapper(object):
 		dt = dtfactor * shortest_period
 		
 		return psim,dt
+	def Mengo_And_tLy_Integrate(self,sim,dt,tStop,Nout,MAX_MEGNO=-1):
+		megnos=np.zeros(Nout)
+		times = np.linspace(0,tStop,Nout)
+		for i,t in enumerate(times):
+			self._IntegrateSimulationToTime(pointer(sim),t,dt)
+			megnos[i] =  sim.megno_aux.contents.megno
+			if MAX_MEGNO > 0 and megnos[i] > MAX_MEGNO:
+				break
+		if i+1==Nout:
+			Nfit=int(np.floor(Nout/2))
+			tfit=times[Nfit:]
+			megnofit=megnos[Nfit:]
+			tLy= 1. / np.linalg.lstsq(np.vstack((  tfit,   np.ones(len(tfit))   )).T,megnofit)[0][0]
+		else:
+			tLy= 1. / np.linalg.lstsq(np.vstack((times[:i+1],np.ones(i+1))).T,megnos[:i+1])[0][0]
+		return megnos[i],tLy
 
 def get_orbital_elements(psim):
 	t=psim.contents.t
@@ -142,7 +156,11 @@ if __name__=="__main__":
 	tFin = 2*np.pi*5e4
 	
 	psim,dt=w.setup_integration(m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,1.0,ltp,etp,pomegatp,tFin,dtfactor=1./30.)
-	
+	op=w.Mengo_And_tLy_Integrate(psim.contents,dt,tFin,10)
+	print op
+	meg=w.run_megno_integration(m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,1.0,ltp,etp,pomegatp,tFin,dtfactor=1./30.)
+	print meg
+	psim,dt=w.setup_integration(m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,1.0,ltp,etp,pomegatp,tFin,dtfactor=1./30.)
 	Npts=200
 	pts = np.zeros((5,Npts))
 	for i,t in enumerate(np.linspace(0,tFin,Npts)):
