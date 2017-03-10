@@ -32,7 +32,7 @@ int IntegrateSimulation(ActionAngleSimulation* sim, const double tFin){
 	for(int i=0; i<Nstep; i++){	
 		SimulationStep(sim);
 	}
-	
+	sim->t = t0 + Nstep * dt;
 	return Nstep;
 }
 
