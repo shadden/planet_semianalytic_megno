@@ -39,6 +39,18 @@ Farey5=[(0, 1), (1, 5), (1, 4), (1, 3), (2, 5), (1, 2), (3, 5), (2, 3), (3, 4), 
 Farey6=[(0, 1), (1, 6), (1, 5), (1, 4), (1, 3), (2, 5), (1, 2), (3, 5), (2, 3), (3, 4), (4, 5), (5, 6), (1, 1)]
 Farey7=[(0, 1), (1, 7), (1, 6), (1, 5), (1, 4), (2, 7), (1, 3), (2, 5), (3, 7), (1, 2), (4, 7), (3, 5), (2, 3), (5, 7), (3, 4), (4, 5), (5, 6), (6, 7), (1, 1)]
 
+def Farey_Sequence_N(n):
+	# Farey sequence function lifted from Wikipedia
+	sequence = []
+	a,b,c,d=0,1,1,n
+	sequence.append((a,b))
+	while c <= n:
+		k = int( (n+b) / d )
+		a,b,c,d = c , d, (k*c - a) , (k*d-b)
+		sequence.append((a,b))
+	return sequence
+	
+
 class ResonanceData(Structure):
 	_fields_ = [("Nres",c_int),("IncludeZeroth",c_int),
 				("MaxOrder",c_int),
