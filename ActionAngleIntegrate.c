@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
+#include <assert.h>
 #include <string.h>
 #include "shared.h"
 #include "LaplaceCoefficients.h"
@@ -14,6 +15,7 @@
 #define RT2 1.414213562373095
 #define RT2INV 0.7071067811865475
 #define INDX(ROW,COL) 4 * ROW + COL
+#define PRINT 0
 
 
 double const symplecticJ[4][4] = {{  0,  0,  1,  0},\
@@ -200,6 +202,7 @@ void ActionAngle_H0_Advance( ActionAnglePhaseState* restrict Z ,SimulationParame
 
 	// Equations
 
+	
 	double X_free, Y_free, x_forced, y_forced, w_sec,X_forced, Y_forced;
 	double x1 = sqrt(2.) * e1 * cos(n1*t);
 	double y1 = sqrt(2.) * e1 * sin(n1*t);
@@ -210,6 +213,12 @@ void ActionAngle_H0_Advance( ActionAnglePhaseState* restrict Z ,SimulationParame
 	// NOTE: this is gamma_dot = -1 * pomega_dot
 	w_sec = -2 * alpha2 * mu2 * fOut - 2 * mu1 * fIn;
 
+	const double dtheta = (n1+w_sec) * dt;
+	const double n1dt =  (n1) * (dt);
+	const double Sn1dt =  sin(n1dt);
+	const double Cn1dt =  cos(n1dt);
+	const double Sdtheta = sin(dtheta);
+	const double Cdtheta = cos(dtheta);
 	
 	x_forced =  ( mu1 * gIn * x1  + alpha2 * mu2 * gOut * x2) / w_sec;
 	y_forced =  ( mu1 * gIn * y1  + alpha2 * mu2 * gOut * y2) / w_sec;
@@ -219,12 +228,6 @@ void ActionAngle_H0_Advance( ActionAnglePhaseState* restrict Z ,SimulationParame
 	X_free = state.X - x_forced;
 	Y_free = state.Y - y_forced;
 	
-	const double dtheta = (n1+w_sec) * dt;
-	const double n1dt =  (n1) * (dt);
-	const double Sn1dt =  sin(n1dt);
-	const double Cn1dt =  cos(n1dt);
-	const double Sdtheta = sin(dtheta);
-	const double Cdtheta = cos(dtheta);
 
 
 	(*Z).l += dt * ( 8./(state.L*state.L*state.L) - n1 );
@@ -378,6 +381,15 @@ void ActionAngle_update_megno_eqations(ActionAnglePhaseState* restrict particle 
 	(*megno).megno = m1.W/t;
 }
 
+void cosine_sine_array(const double cosx,const double sinx, const int Nmax, double* cosarray, double* sinarray){
+	assert(Nmax>=0);
+	*(cosarray) = 1;
+	*(sinarray) = 0;
+	for(int k=1; k<Nmax; k++){
+		*(cosarray+k)  = cosx * (*(cosarray+k-1)) - sinx * (*(sinarray+k-1));
+		*(sinarray+k)  = sinx * (*(cosarray+k-1)) + cosx * (*(sinarray+k-1));
+	}
+}
 
 void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, ResonanceData* restrict rIn ,const double mu1, const double n1, const double e1, const double t){
 
@@ -403,12 +415,37 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 	// Zero-th order resonance effects
 	if (rIn->IncludeZeroth){
 		double alpha = pow(n1,-2./3.);
-		double rsq = 1 + alpha*alpha - 2 * alpha * cos(l0);
+		double c_l0 = cos(l0);
+		double s_l0 = sin(l0);
+		double rsq = 1 + alpha*alpha - 2 * alpha * c_l0;
 		double r = sqrt(rsq);
-		Ldot += -2 * mu1 * (alpha * sin(l0) / rsq / r -  alpha * sin(l0)  );
-		DLdotDl += -2 * mu1 * ( alpha * cos(l0) / rsq / r - 3 * alpha * alpha * sin(l0) * sin(l0) / rsq / rsq / r -  alpha * cos(l0) );
+		Ldot += -2 * mu1 * (alpha * s_l0 / rsq / r -  alpha * s_l0  );
+		DLdotDl += -2 * mu1 * ( alpha * c_l0 / rsq / r - 3 * alpha * alpha * s_l0 * s_l0 / rsq / rsq / r -  alpha * c_l0 );
 	}
-	// Add up inner planet effects 
+
+	// Add up inner planet effects 	
+	// get cosine and sine data for
+
+	double cos_l_array[MAX_J]; 
+	double sin_l_array[MAX_J]; 
+	cosine_sine_array(cos(l0),sin(l0),(rIn->MaxJ)+1,cos_l_array,sin_l_array);
+
+	double cos_g_array[MAX_ORDER+1]; 
+	double sin_g_array[MAX_ORDER+1]; 
+	cosine_sine_array(cos(g0),sin(g0),(rIn->MaxOrder)+1, cos_g_array,sin_g_array);
+	
+	double cos_n1t_array[MAX_ORDER+1]; 
+	double sin_n1t_array[MAX_ORDER+1]; 
+	cosine_sine_array(cos(n1*t),sin(n1*t),(rIn->MaxOrder)+1, cos_n1t_array,sin_n1t_array);
+
+	double c_j_l;
+	double s_j_l;
+	double c_p_n1t;
+	double s_p_n1t;
+	double c_op1_g;
+	double s_op1_g;
+	double c_g = cos_g_array[1];
+	double s_g = sin_g_array[1];
 	
 	for(int i=0; i<NresIn; i++){
 
@@ -418,26 +455,37 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 
 		coeff = *( rIn->ResonanceCoefficients + ( MAX_ORDER + 1 )*i + p );
 
-		theta = j * l0 + p * n1 * t + (o - p - 1) * g0;
-		costheta = cos(theta);
-		sintheta = sin(theta);
-
+		
+		c_j_l = cos_l_array[j];
+		s_j_l = sin_l_array[j];
+		c_p_n1t = cos_n1t_array[p];
+		s_p_n1t = sin_n1t_array[p];
+		c_op1_g = o-p-1 >= 0 ? cos_g_array[o-p-1] : c_g;
+		s_op1_g = o-p-1 >= 0 ? sin_g_array[o-p-1] : -1*s_g;
+		theta = j * l0 + p * n1 * t + (o - p - 1) * g0;			
+		costheta = c_j_l * ( c_p_n1t * c_op1_g - s_p_n1t * s_op1_g ) - s_j_l * ( c_p_n1t * s_op1_g + s_p_n1t * c_op1_g);		
+		sintheta = c_j_l * ( c_p_n1t * s_op1_g + s_p_n1t * c_op1_g ) + s_j_l * ( c_p_n1t * c_op1_g - s_p_n1t * s_op1_g);
+	
+#if PRINT
+		printf("inner %d %d %d: %g \t %g \n",j,o,p,costheta-cos(theta),sintheta-sin(theta) );
+#endif
+	
 		// Derivatives
 		factor  = o >= p+1 ? -RT2 * mu1 * coeff * (o-p) * mpow(e1,p) * mpow(E,o-p-1) : 0;		
 		Ydot += factor * costheta;
 		Xdot += factor * sintheta;
-		Ldot +=  -2 * mu1  * coeff * j * mpow(e1,p) * mpow(E,o-p) * sin(theta + g0);
-
+		Ldot +=  -2 * mu1  * coeff * j * mpow(e1,p) * mpow(E,o-p) * (sintheta * c_g + costheta * s_g );
+		
 		// Variationals
 		DYdotDl += -factor * j * sintheta;
 		DXdotDl +=  factor * j * costheta;
-		DLdotDl += -2 * mu1  * coeff * j*j * mpow(e1,p) * mpow(E,o-p) * cos(theta + g0);		
+		DLdotDl += -2 * mu1  * coeff * j*j * mpow(e1,p) * mpow(E,o-p) * ( costheta*c_g-sintheta*s_g );		
 
 		factor  = o >= p+2 ? -2 * mu1 * coeff * (o-p) * (o-p-1) * mpow(e1,p) * mpow(E,o-p-2) : 0;
-
-		DXdotDX +=  0.5 * factor * sin(theta-g0) ;	
-		DYdotDX +=  0.5 * factor * cos(theta-g0) ;
-		DXdotDY +=  0.5 * factor * cos(theta-g0) ;
+		
+		DXdotDX +=  0.5 * factor * (sintheta*c_g-costheta*s_g) ;	
+ 		DYdotDX +=  0.5 * factor * ((costheta * c_g) + (sintheta * s_g)) ;
+ 		DXdotDY +=  0.5 * factor * ((costheta * c_g) + (sintheta * s_g)) ;
 		
 
 	}
@@ -518,14 +566,47 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 
 	if (rOut->IncludeZeroth){
 		double psi =  l0 - Dn2 * t - lambda2 ;
-		double rsq = 1 + alpha*alpha - 2 * alpha * cos(psi);
+		
+		double c_psi = cos(psi);
+		double s_psi = sin(psi);
+		
+		double rsq = 1 + alpha*alpha - 2 * alpha * c_psi;
 		double r = sqrt(rsq);
 	
-		Ldot += -2 * alpha * mu2 * ( alpha * sin(psi) / rsq / r -  alpha * sin(psi) );
-		DLdotDl += -2 * alpha * mu2 * ( alpha * cos(psi) / rsq / r - 3 * alpha * alpha * sin(psi) * sin(psi) / rsq / rsq / r - alpha * cos(psi));
+		Ldot += -2 * alpha * mu2 * ( alpha * s_psi / rsq / r -  alpha * s_psi );
+		DLdotDl += -2 * alpha * mu2 * ( alpha * c_psi / rsq / r - 3 * alpha * alpha * s_psi * s_psi / rsq / rsq / r - alpha * c_psi);
 	}
+	
+	// get cosine and sine data
 
-	// Add up resonances 
+	double cos_l2_array[MAX_J]; 
+	double sin_l2_array[MAX_J]; 
+	cosine_sine_array(cos(Dn2 * t + lambda2),sin(Dn2 * t + lambda2),(rOut->MaxJ)+1,cos_l2_array,sin_l2_array);
+	double cos_l_array[MAX_J]; 
+	double sin_l_array[MAX_J]; 
+	cosine_sine_array(cos(l0),sin(l0),(rOut->MaxJ)+1,cos_l_array,sin_l_array);
+
+
+	double cos_g_array[MAX_ORDER+1]; 
+	double sin_g_array[MAX_ORDER+1]; 
+	cosine_sine_array(cos(g0),sin(g0),(rOut->MaxOrder)+1, cos_g_array,sin_g_array);
+	
+	double cos_g2_array[MAX_ORDER+1]; 
+	double sin_g2_array[MAX_ORDER+1]; 
+	cosine_sine_array(cos(n1 * t - varpi2),sin(n1 * t - varpi2),(rOut->MaxOrder)+1, cos_g2_array,sin_g2_array);
+
+	double c_j_l2;
+	double s_j_l2;
+	double c_j_l0;
+	double s_j_l0;
+	double c_j_g;
+	double s_j_g;
+	double c_j_g2;
+	double s_j_g2;
+ 	double c_g = cos_g_array[1];
+ 	double s_g = sin_g_array[1];
+ 	
+	// Add up resonances
 	for(int i=0; i<NresOut; i++){
 
 		j = *(rOut->ResonanceIndices + 3*i );
@@ -535,25 +616,44 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 		coeff = *( rOut->ResonanceCoefficients + ( MAX_ORDER + 1 )*i + p );
 
 		theta = j * (Dn2 * t + lambda2) + (o-j) * l0 + (p-1) * g0 + (o-p) * (n1 * t - varpi2);
-		costheta=cos(theta);
-		sintheta=sin(theta);
+		c_j_l2 = cos_l2_array[j];
+		s_j_l2 = sin_l2_array[j];
+		c_j_l0 = cos_l_array[j-o];
+		s_j_l0 = -1*sin_l_array[j-o];
+		c_j_g = p-1 >= 0 ? cos_g_array[p-1] : cos_g_array[1];
+		s_j_g = p-1 >= 0 ? sin_g_array[p-1] : -1*sin_g_array[1];
+		c_j_g2 =  cos_g2_array[o-p];
+		s_j_g2 =  sin_g2_array[o-p];
+
 		
+		costheta = c_j_g*c_j_g2*c_j_l0*c_j_l2 - c_j_l0*c_j_l2*s_j_g*s_j_g2 - \
+		c_j_g2*c_j_l2*s_j_g*s_j_l0 - c_j_g*c_j_l2*s_j_g2*s_j_l0 - \
+		c_j_g2*c_j_l0*s_j_g*s_j_l2 - c_j_g*c_j_l0*s_j_g2*s_j_l2 - \
+		c_j_g*c_j_g2*s_j_l0*s_j_l2 + s_j_g*s_j_g2*s_j_l0*s_j_l2;
+		
+		sintheta = c_j_g2*c_j_l0*c_j_l2*s_j_g + c_j_g*c_j_l0*c_j_l2*s_j_g2 + \
+		c_j_g*c_j_g2*c_j_l2*s_j_l0 - c_j_l2*s_j_g*s_j_g2*s_j_l0 + \
+		c_j_g*c_j_g2*c_j_l0*s_j_l2 - c_j_l0*s_j_g*s_j_g2*s_j_l2 - \
+		c_j_g2*s_j_g*s_j_l0*s_j_l2 - c_j_g*s_j_g2*s_j_l0*s_j_l2 ;
+#if PRINT
+		printf("outer %d %d %d: %g \t %g \n",j,o,p,costheta-cos(theta),sintheta-sin(theta) );
+#endif		
 		factor = p>=1 ? -alpha * mu2 * RT2 * coeff * p * mpow(E,p-1) * mpow(e2,o-p) : 0 ;
 
 		Ydot +=  factor * costheta;
 		Xdot +=  factor * sintheta;
-		Ldot +=  -2 * alpha * mu2  * coeff * (o-j) * mpow(e2,o-p) * mpow(E,p) * sin(theta + g0);
+		Ldot +=  -2 * alpha * mu2  * coeff * (o-j) * mpow(e2,o-p) * mpow(E,p) * (sintheta*c_g + costheta*s_g);
 		
 		// Variationals
 		DYdotDl += -factor * (o-j) * sintheta;
 		DXdotDl +=  factor * (o-j) * costheta;
-		DLdotDl += -2 * alpha * mu2  * coeff * (o-j)* (o-j) * mpow(e2,o-p) * mpow(E,p) * cos(theta + g0);	
-		
+		DLdotDl += -2 * alpha * mu2  * coeff * (o-j)* (o-j) * mpow(e2,o-p) * mpow(E,p) * (costheta*c_g - sintheta*s_g);	
+
 		factor = p>=2 ? -alpha * mu2 * 2 * coeff * p * (p-1) * mpow(E,p-2) * mpow(e2,o-p) : 0 ;
 
-		DXdotDX +=  0.5 * factor * sin(theta-g0) ;	
-		DYdotDX +=  0.5 * factor * cos(theta-g0) ;
-		DXdotDY +=  0.5 * factor * cos(theta-g0) ;
+		DXdotDX +=  0.5 * factor * (sintheta*c_g - costheta*s_g);	
+		DYdotDX +=  0.5 * factor * (costheta*c_g + sintheta*s_g) ;
+		DXdotDY +=  0.5 * factor * (costheta*c_g + sintheta*s_g) ;
 	}
 	// Coordinates z_i are:
 	//	i	coord

@@ -45,8 +45,9 @@ def Farey_Sequence_N(n):
 	
 
 class ResonanceData(Structure):
-	_fields_ = [("Nres",c_int),("IncludeZeroth",c_int),
+	_fields_ = [("IncludeZeroth",c_int),("Nres",c_int),
 				("MaxOrder",c_int),
+				("MaxJ",c_int),
 				("ResonanceIndices",POINTER(c_int)),
 				("ResonanceCoefficients",POINTER(c_double))]
 class PhaseState(Structure):
@@ -304,6 +305,7 @@ if __name__=="__main__":
 
 	res1=[]
 	res2=[]
+
 	for i,o in Farey_Sequence_N(7):
 		j1= o*(3) + i
 		res1= res1 + full_resonance_list(j1,o)
