@@ -40,8 +40,9 @@ Farey6=[(0, 1), (1, 6), (1, 5), (1, 4), (1, 3), (2, 5), (1, 2), (3, 5), (2, 3), 
 Farey7=[(0, 1), (1, 7), (1, 6), (1, 5), (1, 4), (2, 7), (1, 3), (2, 5), (3, 7), (1, 2), (4, 7), (3, 5), (2, 3), (5, 7), (3, 4), (4, 5), (5, 6), (6, 7), (1, 1)]
 
 class ResonanceData(Structure):
-	_fields_ = [("Nres",c_int),("IncludeZeroth",c_int),
+	_fields_ = [("IncludeZeroth",c_int),("Nres",c_int),
 				("MaxOrder",c_int),
+				("MaxJ",c_int),
 				("ResonanceIndices",POINTER(c_int)),
 				("ResonanceCoefficients",POINTER(c_double))]
 class PhaseState(Structure):
