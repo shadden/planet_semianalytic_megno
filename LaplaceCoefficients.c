@@ -47,6 +47,7 @@ int factorial(int f)
 void initialize_ResonanceData( ResonanceData * r,int inclue0th){
 	r->Nres =0;
 	r->MaxOrder=0;
+	r->MaxJ=0;
 	r->ResonanceIndices=NULL;
 	r->ResonanceCoefficients=NULL;
 	r-> IncludeZeroth = inclue0th;
@@ -64,6 +65,7 @@ void AddResonance(ResonanceData* r, int res_j, int order, int epower,double a){
 
 	// Only resonances up to MAX_ORDER allowed
 	assert(order<= MAX_ORDER);
+	assert(res_j < MAX_J);
 
 	coeff=GeneralOrderCoefficient(res_j,order,epower,a);
 
@@ -71,6 +73,9 @@ void AddResonance(ResonanceData* r, int res_j, int order, int epower,double a){
 
 	if (r->MaxOrder < order){
 		r->MaxOrder = order;
+	}
+	if (r->MaxJ < res_j){
+		r->MaxJ = res_j;
 	}
 
 	r->ResonanceIndices = (int *) realloc(r->ResonanceIndices,  (r->Nres) * 3 * sizeof(int));

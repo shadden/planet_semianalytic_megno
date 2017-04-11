@@ -12,7 +12,7 @@
 
 typedef struct ResonanceData {
 	int IncludeZeroth;
-	int Nres,MaxOrder;
+	int Nres,MaxOrder,MaxJ;
 	int* ResonanceIndices;
 	double* ResonanceCoefficients;
 } ResonanceData;
