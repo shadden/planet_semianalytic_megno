@@ -15,6 +15,7 @@
 #define RT2 1.414213562373095
 #define RT2INV 0.7071067811865475
 #define INDX(ROW,COL) 4 * ROW + COL
+#define PRINT 0
 
 
 double const symplecticJ[4][4] = {{  0,  0,  1,  0},\
@@ -461,15 +462,19 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 		s_p_n1t = sin_n1t_array[p];
 		c_op1_g = o-p-1 >= 0 ? cos_g_array[o-p-1] : c_g;
 		s_op1_g = o-p-1 >= 0 ? sin_g_array[o-p-1] : -1*s_g;
-//		theta = j * l0 + p * n1 * t + (o - p - 1) * g0;			
+		theta = j * l0 + p * n1 * t + (o - p - 1) * g0;			
 		costheta = c_j_l * ( c_p_n1t * c_op1_g - s_p_n1t * s_op1_g ) - s_j_l * ( c_p_n1t * s_op1_g + s_p_n1t * c_op1_g);		
 		sintheta = c_j_l * ( c_p_n1t * s_op1_g + s_p_n1t * c_op1_g ) + s_j_l * ( c_p_n1t * c_op1_g - s_p_n1t * s_op1_g);
+	
+#if PRINT
+		printf("inner %d %d %d: %g \t %g \n",j,o,p,costheta-cos(theta),sintheta-sin(theta) );
+#endif
 	
 		// Derivatives
 		factor  = o >= p+1 ? -RT2 * mu1 * coeff * (o-p) * mpow(e1,p) * mpow(E,o-p-1) : 0;		
 		Ydot += factor * costheta;
 		Xdot += factor * sintheta;
-		Ldot +=  -2 * mu1  * coeff * j * mpow(e1,p) * mpow(E,o-p) * (sintheta*c_g + costheta*s_g );
+		Ldot +=  -2 * mu1  * coeff * j * mpow(e1,p) * mpow(E,o-p) * (sintheta * c_g + costheta * s_g );
 		
 		// Variationals
 		DYdotDl += -factor * j * sintheta;
@@ -478,7 +483,7 @@ void H1_Inner_Derivs(double* derivs,double* jacobian ,ActionAnglePhaseState* Z, 
 
 		factor  = o >= p+2 ? -2 * mu1 * coeff * (o-p) * (o-p-1) * mpow(e1,p) * mpow(E,o-p-2) : 0;
 		
-		DXdotDX +=  0.5 * factor * sin(theta-g0) ;	
+		DXdotDX +=  0.5 * factor * (sintheta*c_g-costheta*s_g) ;	
  		DYdotDX +=  0.5 * factor * ((costheta * c_g) + (sintheta * s_g)) ;
  		DXdotDY +=  0.5 * factor * ((costheta * c_g) + (sintheta * s_g)) ;
 		
@@ -610,7 +615,7 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 
 		coeff = *( rOut->ResonanceCoefficients + ( MAX_ORDER + 1 )*i + p );
 
-//		theta = j * (Dn2 * t + lambda2) + (o-j) * l0 + (p-1) * g0 + (o-p) * (n1 * t - varpi2);
+		theta = j * (Dn2 * t + lambda2) + (o-j) * l0 + (p-1) * g0 + (o-p) * (n1 * t - varpi2);
 		c_j_l2 = cos_l2_array[j];
 		s_j_l2 = sin_l2_array[j];
 		c_j_l0 = cos_l_array[j-o];
@@ -630,7 +635,9 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 		c_j_g*c_j_g2*c_j_l2*s_j_l0 - c_j_l2*s_j_g*s_j_g2*s_j_l0 + \
 		c_j_g*c_j_g2*c_j_l0*s_j_l2 - c_j_l0*s_j_g*s_j_g2*s_j_l2 - \
 		c_j_g2*s_j_g*s_j_l0*s_j_l2 - c_j_g*s_j_g2*s_j_l0*s_j_l2 ;
-				
+#if PRINT
+		printf("outer %d %d %d: %g \t %g \n",j,o,p,costheta-cos(theta),sintheta-sin(theta) );
+#endif		
 		factor = p>=1 ? -alpha * mu2 * RT2 * coeff * p * mpow(E,p-1) * mpow(e2,o-p) : 0 ;
 
 		Ydot +=  factor * costheta;
@@ -641,6 +648,7 @@ void H1_Outer_Derivs(double* derivs,double* jacobian, ActionAnglePhaseState* Z, 
 		DYdotDl += -factor * (o-j) * sintheta;
 		DXdotDl +=  factor * (o-j) * costheta;
 		DLdotDl += -2 * alpha * mu2  * coeff * (o-j)* (o-j) * mpow(e2,o-p) * mpow(E,p) * (costheta*c_g - sintheta*s_g);	
+
 		factor = p>=2 ? -alpha * mu2 * 2 * coeff * p * (p-1) * mpow(E,p-2) * mpow(e2,o-p) : 0 ;
 
 		DXdotDX +=  0.5 * factor * (sintheta*c_g - costheta*s_g);	
