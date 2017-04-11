@@ -273,14 +273,14 @@ if __name__=="__main__":
 	w = libwrapper()
 	sim=ActionAngleSimulation()
 
- 	res1= np.array([[3,1,0],[3,1,1]])
- 	res2=np.array([[5,1,0],[5,1,1]]) 
+ 	res1= np.array([[3,1,0],[3,1,1],[6,2,0],[6,2,1],[6,2,2]])
+ 	res2= np.array([[3,1,0],[3,1,1],[6,2,0],[6,2,1],[6,2,2]]) 
 	
-	m1=1.e-4
-	m2=1.e-4
+	m1=2.e-5
+	m2=2.e-5
 
-	e1=0.02
-	e2=0.05
+	e1=0.01
+	e2=0.01
 	w1=np.pi/2.
 
 	w2=-np.pi / 4.
@@ -292,20 +292,23 @@ if __name__=="__main__":
 
 
 
-	delta1 = 0.001;
-	delta2 = 0.001;
+	delta1 = 0.013;
+	delta2 = 0.01;
 	n1 = 3. / 2. * (1+delta1)
-	n2 = 4. / 5. / (1+delta2)
+	n2 = 2. / 3. / (1+delta2)
 
 	dt=2.*np.pi / 20.
 	
 	sim = w.Setup_Integration_Analytic(m1,m2,n1,n2,e1,e2,etp,w1,w2,wtp,lambda2,lambdatp,True,True,res1,res2,dt)
-	data=w.Integrate_Simulation_GetOrbit(sim,2*np.pi*8e3,100,200)
-	print "<Y>=",data[1],"tLy=",data[2]
+	import time
+	start_time = time.time()
+	data=w.Integrate_Simulation_GetOrbit(sim,2*np.pi*1e5,100,200)
+	finish_time = time.time()
+	print "<Y>=",data[1],"tLy=",data[2], "time: --- %s seconds ---" %(finish_time - start_time)
+
 	orbit = data[0]
 	plt.plot(orbit[:,0],orbit[:,3])
 	plt.plot(orbit[:,0],orbit[:,4])
 	plt.figure()
 	plt.plot(orbit[:,0],orbit[:,1])
 	plt.show()
-
