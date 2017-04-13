@@ -76,7 +76,7 @@ class libwrapper(object):
 	def run_megno_integration(self,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish,dtfactor=1./30.):
 		sim = Simulation()
 		psim = pointer(sim)	
-		self._initialize_simulation(pointer(sim),m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp)
+		self._initialize_simulation(psim,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp)
 		shortest_period = 2 * np.pi / np.max(np.array([n1,n2,ntp]))
 		dt = dtfactor * shortest_period
 		# print tFinish

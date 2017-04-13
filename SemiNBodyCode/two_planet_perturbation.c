@@ -1,4 +1,6 @@
 #include "SemiNBody.h"
+#define MAX_MEGNO 200
+#define MAX_DIST 3
 
 
 static inline double random_real(){
@@ -297,6 +299,10 @@ double IntegrateSimulation(Simulation * sim, const double tFin, const double dt)
 
 	for(int i=0; i<Nstep; i++){
 		simulation_step(sim,i*dt,dt);
+		if((sim->megno_aux->megno) >MAX_MEGNO || (sim->test_particle->x) > MAX_DIST || (sim->test_particle->y) > MAX_DIST){
+			return MAX_MEGNO;
+		}
+		
 	}
 	return sim->megno_aux->megno;
 }

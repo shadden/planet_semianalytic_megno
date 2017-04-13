@@ -318,7 +318,7 @@ if __name__=="__main__":
 #	w._SimulationStep(pointer(sim))
 	import time
 	start_time = time.time()
-	data=w.Integrate_Simulation_GetOrbit(sim,2*np.pi*3e4,100,200)
+	data=w.Integrate_Simulation_GetOrbit(sim,2*np.pi*1e4,100,200)
 	finish_time = time.time()
 	print "<Y>=",data[1],"tLy=",data[2], "time: --- %s seconds ---" %(finish_time - start_time)
 
