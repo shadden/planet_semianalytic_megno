@@ -79,7 +79,6 @@ class libwrapper(object):
 		self._initialize_simulation(psim,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp)
 		shortest_period = 2 * np.pi / np.max(np.array([n1,n2,ntp]))
 		dt = dtfactor * shortest_period
-		# print tFinish
 		return self._IntegrateSimulation(psim,tFinish,dt)
 	def setup_integration(self,m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,ntp,ltp,etp,pomegatp,tFinish,dtfactor=1./30.):
 		sim = Simulation()
@@ -157,9 +156,9 @@ if __name__=="__main__":
 	
 	psim,dt=w.setup_integration(m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,1.0,ltp,etp,pomegatp,tFin,dtfactor=1./30.)
 	op=w.Mengo_And_tLy_Integrate(psim.contents,dt,tFin,10)
-	print op
+	print(op)
 	meg=w.run_megno_integration(m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,1.0,ltp,etp,pomegatp,tFin,dtfactor=1./30.)
-	print meg
+	print(meg)
 	psim,dt=w.setup_integration(m1,m2,n1,l1,e1,pomega1,n2,l2,e2,pomega2,1.0,ltp,etp,pomegatp,tFin,dtfactor=1./30.)
 	Npts=200
 	pts = np.zeros((5,Npts))
