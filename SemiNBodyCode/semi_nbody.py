@@ -3,12 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 import os
-who =os.popen("whoami") 
-if who.readline().strip() =='samuelhadden':
-	SRCDIR = "/Users/samuelhadden/02_ThreePlanet_Stability/03_Semianalytic_Code/SemiNBodyCode"
-else:
-	SRCDIR = "/projects/p20783/sjh890/02_Chaos_Project/SemiAnalyticCodes/planet_semianalytic_megno/SemiNBodyCode"
-who.close()
+#who =os.popen("whoami") 
+#if who.readline().strip() =='samuelhadden':
+#	SRCDIR = "/Users/samuelhadden/02_ThreePlanet_Stability/03_Semianalytic_Code/SemiNBodyCode"
+#else:
+#	SRCDIR = "/projects/p20783/sjh890/02_Chaos_Project/SemiAnalyticCodes/planet_semianalytic_megno/SemiNBodyCode"
+#who.close()
+SRCDIR="/Users/shadden/Projects/00_Codes_And_Data/planet_semianalytic_megno/SemiNBodyCode"
 
 def get_ctype_ptr(dtype,dim,**kwargs):
 	return np.ctypeslib.ndpointer(dtype=dtype,ndim=dim,flags='CONTIGUOUS',**kwargs)	
