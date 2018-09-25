@@ -1,3 +1,4 @@
+#include <fenv.h>
 #include "SemiNBody.h"
 #define MAX_MEGNO 200
 #define MAX_DIST 3
@@ -242,9 +243,6 @@ void compute_variational_accs(Simulation * sim){
 	const double rho2_inv3 = 1./(rho2sq * rho2);
 	const double rho2_inv5 = rho2_inv3/rho2sq;
 	
-	const double r2sq = x2*x2 +y2*y2;
-	const double r2cubed_inv = 1. / pow(r2sq,1.5);
-	
 	// test-particle r	
 	const double rsq = p1.x * p1.x + p1.y * p1.y;
 	const double r = sqrt(rsq);
@@ -297,11 +295,15 @@ void simulation_step(Simulation * sim, double t, double dt){
 double IntegrateSimulation(Simulation * sim, const double tFin, const double dt){
 	const int Nstep = (int) ceil( tFin / dt);
 
+	feclearexcept(FE_ALL_EXCEPT);
+
 	for(int i=0; i<Nstep; i++){
 		simulation_step(sim,i*dt,dt);
 		if((sim->megno_aux->megno) >MAX_MEGNO || (sim->test_particle->x) > MAX_DIST || (sim->test_particle->y) > MAX_DIST){
 			return MAX_MEGNO;
 		}
+		if (fetestexcept(FE_ALL_EXCEPT) & FE_DIVBYZERO){printf("divide by zero error\n"); return MAX_MEGNO; }
+		if (fetestexcept(FE_ALL_EXCEPT) & FE_OVERFLOW){printf("overflow error\n"); return MAX_MEGNO; }
 		
 	}
 	return sim->megno_aux->megno;
