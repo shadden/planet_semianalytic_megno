@@ -1,6 +1,3 @@
-/*Many thanks for Jack Wisdom at MIT for sharing the code "laplace()" below with us. */
-/* the longitude of transit = 0 */
-/* Please cite Agol & Deck (2015) if you make use of this code in your research.*/
 #define LAPLACE_EPS 1.0e-10
 
 #ifndef PI
